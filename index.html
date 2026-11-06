@@ -48,7 +48,7 @@ td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
 tr:last-child td{border-bottom:0}
 .ms{font-variant-numeric:tabular-nums;text-align:right}
 .ok{color:var(--good)} .fail{color:var(--bad)} .slow{color:var(--warn)}
-input[type=text]{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:10px;
+input[type=text],textarea{font-family:inherit;resize:vertical;padding:10px 12px}textarea{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:10px;
   color:var(--text);padding:9px 12px;font-size:15px;min-width:180px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 iframe.map{width:100%;height:220px;border:0;border-radius:10px;background:var(--card2)}
@@ -128,7 +128,7 @@ ul.check{padding-left:20px;margin:6px 0}
 <div class="card" style="margin-top:14px">
   <h2>批量查 IP / 优选清单 <span class="r">一行一个（≤20），支持 IP:端口#地区 清单格式</span></h2>
   <div class="row">
-    <input type="text" id="batchIps" placeholder="粘贴多个 IP，用空格或逗号分隔，如 1.1.1.1, 8.8.8.8">
+    <textarea id="batchIps" rows="4" placeholder="一行一个，可直接粘贴优选清单，如：&#10;18.181.170.52:443#JP [反代入口]&#10;1.1.1.1:443#AU [公共DNS]"></textarea>
     <button onclick="queryBatch()">批量查询</button>
   </div>
   <div id="batchResult" style="margin-top:10px"></div>
@@ -139,7 +139,7 @@ ul.check{padding-left:20px;margin:6px 0}
   <div class="card">
     <h2>连通性测速 <span class="r">学 TcpTest / One IP 的站点延迟</span></h2>
     <table id="connTable"><tr><td class="muted">点「一键体检」开始</td></tr></table>
-    <div class="small muted" style="margin-top:8px">从你的浏览器实测到各站点的响应时间，反映你本地线路质量（不是服务器多地 Ping）。</div>
+    <div class="small muted" style="margin-top:8px">从你的浏览器实测到各站点的响应时间，反映你本地线路质量（不是服务器多地 Ping）。中间一列是你实际连到的服务器所在地（按域名解析 IP 定位，CDN 站点为边缘节点）。</div>
   </div>
   <div class="card">
     <h2>AI 服务可达性 <span class="r">学 One IP 的 AI 状态聚合</span></h2>
@@ -229,6 +229,32 @@ async function fetchT(url, ms=9000, opts={}){
   return Promise.race([fetch(url, opts), timeout(ms)]);
 }
 async function getJson(url, ms){ const r = await fetchT(url, ms||9000); if(!r.ok) throw new Error(r.status); return r.json(); }
+const _siteGeoCache = {};
+async function siteGeo(domain){
+  if(_siteGeoCache[domain] !== undefined) return _siteGeoCache[domain];
+  let out = '–';
+  try{
+    let ip = null;
+    for(const t of [1, 28]){
+      const j = await getJson('https://dns.google/resolve?name=' + encodeURIComponent(domain) + '&type=' + t, 7000);
+      const ans = (j.Answer || []).find(a=>a.type === t && a.data);
+      if(ans){ ip = ans.data; break; }
+    }
+    if(ip){
+      const g = await getJson('https://ipwho.is/' + encodeURIComponent(ip), 7000);
+      if(g && g.success !== false && g.country) out = (g.flag ? g.flag.emoji + ' ' : '') + g.country + (g.city ? ' · ' + g.city : '');
+    }
+  }catch(e){}
+  _siteGeoCache[domain] = out;
+  return out;
+}
+function fillSiteGeo(list, prefix){
+  list.forEach(async item=>{
+    const el = $(prefix + item.name);
+    if(el) el.textContent = await siteGeo(item.domain);
+  });
+}
+
 async function fetchRisk(ip){
   for(let i=0;i<2;i++){
     try{ const pc = await getJson('https://proxycheck.io/v2/'+encodeURIComponent(ip)+'?vpn=1&risk=1', 9000); if(pc && pc[ip]) return pc[ip]; }catch(e){}
@@ -340,25 +366,26 @@ async function queryIp(){
 }
 
 /* ---------- 批量查询 + 导出 ---------- */
-async function queryBatch(){
-  const raw = $('batchIps').value.trim();
-  const lines = raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
-  const entries = [];
-  const seen = new Set();
-  for(const ln of lines){
-    const m = ln.match(/([0-9a-fA-F:.]*:[0-9a-fA-F:]+|\d{1,3}(?:\.\d{1,3}){3})/);
-    if(!m) continue;
-    const ip = m[1];
-    let port = '–', label = '';
-    const rest = ln.slice(ln.indexOf(ip) + ip.length);
-    const pm = rest.match(/^:(\d{2,5})/); if(pm) port = pm[1];
-    const rm = ln.match(/#([^\s\[\]]+)/); if(rm) label = rm[1];
-    const nm = ln.match(/\[([^\]]+)\]/); if(nm) label += (label?' ':'') + '[' + nm[1] + ']';
+function parseList(text){
+  const out = []; const seen = new Set();
+  const re = /(\d{1,3}(?:\.\d{1,3}){3})(?::(\d{2,5}))?(?:\s*#\s*([^\s\[\],，;；]+))?(?:\s*\[([^\]]+)\])?|([0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{0,4}){2,})(?:\s*#\s*([^\s\[\],，;；]+))?(?:\s*\[([^\]]+)\])?/g;
+  let m;
+  while((m = re.exec(text)) !== null){
+    const ip = m[1] || m[5];
+    if(!ip) continue;
+    const port = m[2] || '–';
+    let label = (m[3] || m[6] || '');
+    const note = m[4] || m[7];
+    if(note) label += (label ? ' ' : '') + '[' + note + ']';
     const key = ip + ':' + port;
     if(seen.has(key)) continue; seen.add(key);
-    entries.push({ip, port, label});
-    if(entries.length >= 20) break;
+    out.push({ip, port, label});
+    if(out.length >= 20) break;
   }
+  return out;
+}
+async function queryBatch(){
+  const entries = parseList($('batchIps').value);
   if(!entries.length){ $('batchResult').innerHTML = '<span class="fail">先粘贴至少一个 IP（支持 18.181.170.52:443#JP [反代入口] 这样的清单行）。</span>'; return; }
   $('batchResult').innerHTML = '<span class="spin"></span> 逐个查询中（' + entries.length + ' 个）…';
   const rows = [];
@@ -415,10 +442,11 @@ async function runConn(){
     ['intl','Reddit','https://www.reddit.com/favicon.ico'], ['intl','Telegram','https://telegram.org/favicon.ico'],
     ['intl','Discord','https://discord.com/favicon.ico'], ['intl','Steam','https://store.steampowered.com/favicon.ico']
   ];
-  const rowsOf = g => sites.filter(x=>x[0]===g).map(x=>'<tr><td>'+x[1]+'</td><td class="ms" id="c_'+x[1]+'"><span class="spin"></span></td></tr>').join('');
+  const rowsOf = g => sites.filter(x=>x[0]===g).map(x=>'<tr><td>'+x[1]+'</td><td class="small muted" id="sc_'+x[1]+'">…</td><td class="ms" id="c_'+x[1]+'"><span class="spin"></span></td></tr>').join('');
   $('connTable').innerHTML =
-    '<tr><td colspan="2" class="muted small">国内站点 · 平均 <span id="avg_cn">…</span></td></tr>' + rowsOf('cn')
-    + '<tr><td colspan="2" class="muted small">国际站点 · 平均 <span id="avg_intl">…</span></td></tr>' + rowsOf('intl');
+    '<tr><td colspan="3" class="muted small">国内站点 · 平均 <span id="avg_cn">…</span></td></tr>' + rowsOf('cn')
+    + '<tr><td colspan="3" class="muted small">国际站点 · 平均 <span id="avg_intl">…</span></td></tr>' + rowsOf('intl');
+  fillSiteGeo(sites.map(x=>({name:x[1], domain:new URL(x[2]).hostname})), 'sc_');
   const res = await Promise.all(sites.map(async x=>{ const ms = await probe(x[2]); $('c_'+x[1]).innerHTML = msCell(ms); return [x[0], ms]; }));
   for(const g of ['cn','intl']){
     const ok = res.filter(r=>r[0]===g && r[1]>=0).map(r=>r[1]);
@@ -445,10 +473,11 @@ async function runAI(){
     ['cn','海螺AI','https://hailuoai.com/favicon.ico','中国 MiniMax'],
     ['cn','讯飞星火','https://xinghuo.xfyun.cn/favicon.ico','中国 科大讯飞']
   ];
-  const rowsOf = g => ais.filter(x=>x[0]===g).map(x=>'<tr><td>'+x[1]+' <span class="muted small">'+x[3]+'</span></td><td class="ms" id="a_'+x[1]+'"><span class="spin"></span></td></tr>').join('');
+  const rowsOf = g => ais.filter(x=>x[0]===g).map(x=>'<tr><td>'+x[1]+' <span class="muted small">'+x[3]+'</span></td><td class="small muted" id="sa_'+x[1]+'">…</td><td class="ms" id="a_'+x[1]+'"><span class="spin"></span></td></tr>').join('');
   $('aiTable').innerHTML =
-    '<tr><td colspan="2" class="muted small">国际 AI · 可达 <span id="aiok_intl">…</span></td></tr>' + rowsOf('intl')
-    + '<tr><td colspan="2" class="muted small">国内 AI · 可达 <span id="aiok_cn">…</span></td></tr>' + rowsOf('cn');
+    '<tr><td colspan="3" class="muted small">国际 AI · 可达 <span id="aiok_intl">…</span></td></tr>' + rowsOf('intl')
+    + '<tr><td colspan="3" class="muted small">国内 AI · 可达 <span id="aiok_cn">…</span></td></tr>' + rowsOf('cn');
+  fillSiteGeo(ais.map(x=>({name:x[1], domain:new URL(x[2]).hostname})), 'sa_');
   const res = await Promise.all(ais.map(async x=>{ const ms = await probe(x[2]); $('a_'+x[1]).innerHTML = msCell(ms); return [x[0], ms]; }));
   for(const g of ['intl','cn']){
     const tot = ais.filter(x=>x[0]===g).length;
@@ -843,13 +872,15 @@ async function runDualView(){
     if(bdCountry && CN2EN[bdCountry] !== a.country) bdTxt += '（与国外库不一致：国内库对海外云厂商 IP 常按注册地标）';
   }
   rows.push(['国内库（百度）', bdTxt]);
-  const sh = await sohuEcho();
-  if(sh){
+  let sh = await sohuEcho();
+  if(sh && /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1)/.test(sh.cip)) sh = {bad: sh.cip};
+  if(sh && sh.cip){
     rows.push(['国内服务（搜狐）看到的出口', sh.cip + (sh.cname ? '（' + sh.cname + '）' : '')]);
     const same = state.v4 && sh.cip === state.v4;
     rows.push(['判定', same ? '✓ 国内、国外视角是同一个出口（全局代理）'
       : '⚠️ 国内服务看到的出口与国外视角不同：可能开了分流（国内直连），或你的客户端在多出口间轮换']);
-  } else rows.push(['国内服务（搜狐）看到的出口', '未取到（国内探针从当前网络不可达）']);
+  } else if(sh && sh.bad) rows.push(['国内服务（搜狐）看到的出口', '未取到（探针返回了内网地址 ' + sh.bad + '，不可信）']);
+  else rows.push(['国内服务（搜狐）看到的出口', '未取到（国内探针从当前网络不可达）']);
   $('dualView').innerHTML = rows.map(([k,v])=>'<div class="kv"><span>'+k+'</span><b style="text-align:right">'+v+'</b></div>').join('')
     + '<div class="small muted" style="margin-top:6px">同一个 IP，国内数据库与国外数据库的定位经常不同；分流与否，要看国内服务实际拿到的出口是不是你的代理出口。</div>';
 }
