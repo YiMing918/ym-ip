@@ -245,7 +245,7 @@ async function detectExit(){
 }
 
 /* ---------- IP 信息 + 风险 ---------- */
-const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7','sakura','edis','huawei','ucloud','kamatera','racknerd','hostwinds','quadranet','psychz','colocrossing','frantech','upcloud','scaleway','netcup','ionos','aeza','servinga','myloc'];
+const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7','sakura','edis','huawei','ucloud','kamatera','racknerd','hostwinds','quadranet','psychz','colocrossing','frantech','upcloud','scaleway','netcup','ionos','aeza','servinga','myloc','aceville','vps','serverius','datapacket','worldstream','fdcservers','hostinger','alexhost','bluevps','glesys','altushost','colocation','dedicated'];
 function guessType(info, risk){
   const s = ((info&&((info.connection&&info.connection.isp)||''))+' '+((info&&info.org)||'')).toLowerCase();
   if(risk && risk.type) return risk.type; // VPN / Proxy / Residential 等（proxycheck 口径）
