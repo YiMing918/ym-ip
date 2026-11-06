@@ -566,7 +566,7 @@ async function runCross(){
     const rows = [
       ['国家', a.country||'–', alt.country, cmp(a.country, alt.country)],
       ['城市', a.city||'–', alt.city||'–', cmp(a.city, alt.city)],
-      ['ASN', ac.asn?('AS'+ac.asn):'–', alt.asn||'–', ''],
+      ['ASN', ac.asn?('AS'+ac.asn):'–', alt.asn||'–', (ac.asn && alt.asn && String(alt.asn).includes(String(ac.asn))) ? ' ✓ 一致' : ''],
       ['时区', a.timezone?(a.timezone.id||''):'–', alt.timezone||'–', cmp(a.timezone?(a.timezone.id||''):''  , alt.timezone)]
     ];
     $('crossTable').innerHTML = '<table><tr><th>项目</th><th>ipwho.is</th><th>ipapi.is</th><th></th></tr>'
