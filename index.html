@@ -409,7 +409,7 @@ async function runAI(){
 /* ---------- WebRTC ---------- */
 function runRTC(){
   return new Promise(resolve=>{
-    const pubs = new Set(), locals = new Set();
+    const pubs = new Set(), locals = new Set(), virtuals = new Set();
     let pc, mdns = false;
     try{ pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]}); }
     catch(e){ $('rtcJudge').innerHTML='<span class="fail">浏览器不支持 WebRTC</span>'; return resolve(); }
@@ -424,10 +424,11 @@ function runRTC(){
       const isV6 = addr.includes(':') && /^[0-9a-fA-F:]+$/.test(addr);
       if(!isV4 && !isV6) return;
       if(/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|fd|fe80|::1)/i.test(addr)) locals.add(addr);
+      else if(/^198\.1[89]\./.test(addr) || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(addr)) virtuals.add(addr);
       else pubs.add(addr);
     };
     function finish(){
-      state.rtcPublic = [...pubs]; state.rtcLocal = [...locals];
+      state.rtcPublic = [...pubs]; state.rtcLocal = [...locals].concat([...virtuals].map(v=>v+'（虚拟）'));
       $('rtcIp').textContent = state.rtcPublic.length ? state.rtcPublic.join('，') : '未暴露（好）';
       $('rtcLocal').textContent = state.rtcLocal.length ? state.rtcLocal.join('，') : (mdns ? '未暴露（mDNS 已隐藏）' : '未暴露');
       const exit = state.v4 || state.v6;
@@ -524,8 +525,9 @@ async function runAll(){
   if(running) return; running = true;
   $('runAll').disabled = true;
   await detectExit();
-  await Promise.allSettled([runConn(), runAI(), runRTC().then(()=>runDNS())]);
+  await Promise.allSettled([runConn(), runAI(), runRTC()]);
   runFP();
+  runDNS().then(()=>runFP()).catch(()=>{});
   $('lastRun').textContent = '上次体检：'+new Date().toLocaleString();
   $('runAll').disabled = false; running = false;
 }
