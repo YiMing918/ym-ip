@@ -58,6 +58,28 @@ footer{color:var(--muted);font-size:13px;margin-top:26px;border-top:1px solid va
 @keyframes s{to{transform:rotate(360deg)}}
 .check li{margin:3px 0;font-size:14px}
 ul.check{padding-left:20px;margin:6px 0}
+
+/* v1.5 分类导航与手机瘦身 */
+.stickybar{position:sticky;top:0;z-index:60;background:rgba(13,17,23,.92);backdrop-filter:blur(8px);margin:0 -16px;padding:6px 16px 8px;border-bottom:1px solid var(--line)}
+#qnav{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:4px 0}
+#qnav::-webkit-scrollbar{display:none}
+#qnav a{flex:none;padding:7px 18px;border:1px solid var(--line);border-radius:999px;color:var(--muted);text-decoration:none;font-size:15px;background:var(--card)}
+#qnav a.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+#miniBar{font-size:13px;color:var(--muted);padding:2px 2px 0;word-break:break-all}
+#miniBar b{color:var(--text)}
+.tabpage{display:none;flex-direction:column;gap:14px;margin-top:14px}
+.tabpage.on{display:flex}
+.tabpage .grid{margin-top:0}
+.scrollbox{max-height:330px;overflow:auto}
+@media (max-width:640px){
+  .card{padding:14px}
+  header.top{padding:16px 0 4px}
+  header.top h1{font-size:20px}
+  header.top .sub{font-size:13px}
+  .big-ip{font-size:18px}
+  .scrollbox{max-height:280px}
+  button{padding:8px 14px;font-size:14px}
+}
 </style>
 </head>
 <body>
@@ -71,9 +93,17 @@ ul.check{padding-left:20px;margin:6px 0}
   <div class="sub">IP 纯净度 · 风控值 · 归属/ASN · WebRTC / DNS 泄露 · 连通性 · AI 可达性 · 指纹一致性 · 带宽测速 · 多源交叉验证 · 双视角出口 —— 参考 One IP、IPSuper、ping0、IPCheck.ing、TcpTest 的长处综合而成。</div>
 </header>
 
+<div class="stickybar">
+  <nav id="qnav">
+    <a href="#home" data-tab="home" class="on">🏠 概览</a><a href="#query" data-tab="query">🔎 查询</a><a href="#detect" data-tab="detect">🩺 检测</a><a href="#privacy" data-tab="privacy">🕵️ 隐私</a><a href="#history" data-tab="history">🕘 历史</a>
+  </nav>
+  <div id="miniBar" style="display:none">📍 当前出口 <b id="miniIp"></b> <span id="miniScore" class="muted"></span></div>
+</div>
+
+<div class="tabpage on" id="pg-home">
 <!-- 总览 -->
 <div class="grid">
-  <div class="card">
+  <div class="card" id="cScore">
     <h2>综合评分 <span class="r">学 IPSuper 的安全分 + ping0 的风控分档</span></h2>
     <div class="ring-wrap">
       <div class="ring">
@@ -92,7 +122,7 @@ ul.check{padding-left:20px;margin:6px 0}
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="cExit">
     <h2>我的出口 IP <span class="r">学 One IP 的双探针</span></h2>
     <div class="small muted">IPv4 出口</div>
     <div class="big-ip" id="myV4">检测中…</div>
@@ -104,53 +134,99 @@ ul.check{padding-left:20px;margin:6px 0}
 
 <!-- IP 详情 + 地图 -->
 <div class="grid">
-  <div class="card">
+  <div class="card" id="cDetail">
     <h2>IP 详情 <span class="r">归属 / ASN / 时区 / 经纬度</span></h2>
     <div id="ipDetail"><span class="spin"></span> 加载中…</div>
   </div>
-  <div class="card">
+  <div class="card" id="cMap">
     <h2>位置地图</h2>
     <div id="mapBox"><div class="muted">等定位数据…</div></div>
   </div>
 </div>
 
+<!-- 双视角出口 -->
+<div class="card" id="cDual" style="margin-top:14px">
+  <h2>双视角出口 <span class="r">国内服务和国外服务看到的你，是同一个吗</span></h2>
+  <div id="dualView"><span class="muted small">等出口信息就绪…</span></div>
+</div>
+
+</div>
+
+<div class="tabpage" id="pg-query">
 <!-- 任意 IP 查询 -->
-<div class="card" style="margin-top:14px">
+<div class="card" id="cQuery" style="margin-top:14px">
   <h2>查任意 IP <span class="r">学 ping0 / IPSuper 的单 IP 画像</span></h2>
   <div class="row">
     <input type="text" id="qIp" placeholder="输入任意 IPv4 / IPv6，如 1.1.1.1">
     <button onclick="queryIp()">查询</button>
   </div>
-  <div id="qResult" style="margin-top:10px"></div>
+  <div id="qResult" class="scrollbox" style="margin-top:10px"></div>
 </div>
 
 <!-- 批量查询 -->
-<div class="card" style="margin-top:14px">
+<div class="card" id="cBatch" style="margin-top:14px">
   <h2>批量查 IP / 优选清单 <span class="r">一行一个（≤20），支持 IP:端口#地区 清单格式</span></h2>
   <div class="row">
     <textarea id="batchIps" rows="4" placeholder="一行一个，可直接粘贴优选清单，如：&#10;18.181.170.52:443#JP [反代入口]&#10;1.1.1.1:443#AU [公共DNS]"></textarea>
     <button onclick="queryBatch()">批量查询</button>
   </div>
-  <div id="batchResult" style="margin-top:10px"></div>
+  <div id="batchResult" class="scrollbox" style="margin-top:10px"></div>
 </div>
 
+<div style="margin-top:0">
+<div class="card" id="cDnsQ">
+    <h2>域名解析查询 <span class="r">学 TcpTest 的 DNS 查询</span></h2>
+    <div class="row">
+      <input type="text" id="dnsDomain" placeholder="输入域名，如 example.com">
+      <button onclick="runDnsQuery()">查询解析</button>
+    </div>
+    <div id="dnsResult" style="margin-top:8px"></div>
+  </div>
+</div>
+</div>
+
+<div class="tabpage" id="pg-detect">
 <!-- 连通性 + AI -->
 <div class="grid">
-  <div class="card">
+  <div class="card" id="cConn">
     <h2>连通性测速 <span class="r">学 TcpTest / One IP 的站点延迟</span></h2>
-    <table id="connTable"><tr><td class="muted">点「一键体检」开始</td></tr></table>
+    <div class="scrollbox"><table id="connTable"><tr><td class="muted">点「一键体检」开始</td></tr></table></div>
     <div class="small muted" style="margin-top:8px">从你的浏览器实测到各站点的响应时间，反映你本地线路质量（不是服务器多地 Ping）。中间一列是你实际连到的服务器所在地（按域名解析 IP 定位，CDN 站点为边缘节点）。</div>
   </div>
-  <div class="card">
+  <div class="card" id="cAi">
     <h2>AI 服务可达性 <span class="r">学 One IP 的 AI 状态聚合</span></h2>
-    <table id="aiTable"><tr><td class="muted">点「一键体检」开始</td></tr></table>
+    <div class="scrollbox"><table id="aiTable"><tr><td class="muted">点「一键体检」开始</td></tr></table></div>
     <div class="small muted" style="margin-top:8px">能打开 ≠ 能注册/不被风控，还要看出口 IP 所在地区是否在服务支持范围内。</div>
   </div>
 </div>
 
+<!-- 多源与 CF 视角 -->
+<div class="grid">
+  <div class="card" id="cCf">
+    <h2>Cloudflare 视角 <span class="r">这条线路接入了 CF 的哪个机房</span></h2>
+    <div id="cfTrace"><span class="muted small">加载中…</span></div>
+  </div>
+  <div class="card" id="cCross">
+    <h2>多源交叉验证 <span class="r">学 One IP 的多数据源对照</span></h2>
+    <div id="crossTable" class="scrollbox"><span class="muted small">等出口信息就绪…</span></div>
+    <div class="small" id="v6Profile" style="margin-top:6px"></div>
+    <div class="small muted" id="exitDnsbl" style="margin-top:4px"></div>
+  </div>
+</div>
+
+<div style="margin-top:0">
+<div class="card" id="cSpeed">
+    <h2>带宽测速 <span class="r">学 IPCheck.ing 的网络测速</span></h2>
+    <div id="speedOut" class="small muted">点开始，测延迟 / 抖动 / 下载 / 上传（经 Cloudflare 边缘节点，约消耗 45 MB 流量）。</div>
+    <button class="ghost" id="speedBtn" onclick="runSpeed()" style="margin-top:8px">开始测速</button>
+  </div>
+</div>
+</div>
+
+<div class="tabpage" id="pg-privacy">
 <!-- 泄露 + 指纹 -->
 <div class="grid">
-  <div class="card">
+  <div class="card" id="cLeak">
     <h2>泄露检测 <span class="r">学 IPCheck.ing 的 WebRTC / DNS</span></h2>
     <div class="kv"><span>WebRTC 暴露的公网 IP</span><b id="rtcIp">未检测</b></div>
     <div class="kv"><span>WebRTC 本地内网 IP</span><b id="rtcLocal">未检测</b></div>
@@ -161,7 +237,7 @@ ul.check{padding-left:20px;margin:6px 0}
     <div class="kv"><span>代理头（服务器所见）</span><b id="hdrInfo">未检测</b></div>
     <div class="kv"><span>代理头判定</span><b id="hdrJudge">–</b></div>
   </div>
-  <div class="card">
+  <div class="card" id="cFp">
     <h2>浏览器指纹 & 环境一致性 <span class="r">学 Whoer 的逐项扣分</span></h2>
     <div>一致性得分：<b id="fpScore" style="font-size:20px">–</b><span class="muted small"> / 100</span></div>
     <ul class="check" id="fpList"><li class="muted">点「一键体检」开始</li></ul>
@@ -169,47 +245,15 @@ ul.check{padding-left:20px;margin:6px 0}
   </div>
 </div>
 
-<!-- 多源与 CF 视角 -->
-<div class="grid">
-  <div class="card">
-    <h2>Cloudflare 视角 <span class="r">这条线路接入了 CF 的哪个机房</span></h2>
-    <div id="cfTrace"><span class="muted small">加载中…</span></div>
-  </div>
-  <div class="card">
-    <h2>多源交叉验证 <span class="r">学 One IP 的多数据源对照</span></h2>
-    <div id="crossTable"><span class="muted small">等出口信息就绪…</span></div>
-    <div class="small" id="v6Profile" style="margin-top:6px"></div>
-    <div class="small muted" id="exitDnsbl" style="margin-top:4px"></div>
-  </div>
 </div>
 
-<!-- 双视角出口 -->
-<div class="card" style="margin-top:14px">
-  <h2>双视角出口 <span class="r">国内服务和国外服务看到的你，是同一个吗</span></h2>
-  <div id="dualView"><span class="muted small">等出口信息就绪…</span></div>
-</div>
-
-<!-- 测速 + 域名解析 -->
-<div class="grid">
-  <div class="card">
-    <h2>带宽测速 <span class="r">学 IPCheck.ing 的网络测速</span></h2>
-    <div id="speedOut" class="small muted">点开始，测延迟 / 抖动 / 下载 / 上传（经 Cloudflare 边缘节点，约消耗 45 MB 流量）。</div>
-    <button class="ghost" id="speedBtn" onclick="runSpeed()" style="margin-top:8px">开始测速</button>
-  </div>
-  <div class="card">
-    <h2>域名解析查询 <span class="r">学 TcpTest 的 DNS 查询</span></h2>
-    <div class="row">
-      <input type="text" id="dnsDomain" placeholder="输入域名，如 example.com">
-      <button onclick="runDnsQuery()">查询解析</button>
-    </div>
-    <div id="dnsResult" style="margin-top:8px"></div>
-  </div>
-</div>
-
+<div class="tabpage" id="pg-history">
 <!-- 历史 -->
-<div class="card" style="margin-top:14px">
+<div class="card" id="cHist" style="margin-top:14px">
   <h2>检测历史 <span class="r">只存在你自己的浏览器里 · 学 MyIP 的本地历史</span></h2>
-  <div id="history"><span class="muted small">暂无记录</span></div>
+  <div id="history" class="scrollbox"><span class="muted small">暂无记录</span></div>
+</div>
+
 </div>
 
 <footer>
@@ -907,6 +951,56 @@ runTrace();
   if(state.info && (state.v4 || state.v6)){ runCross(); runFPExtra(); runDualView(); runHeaders(); probeWS(); }
   else if((n||0) < 25) setTimeout(()=>waitInfo((n||0)+1), 1500);
 })(0);
+</script>
+<script>
+(function(){
+  window.__initHash = location.hash;
+  var TABS = {home:['cScore','cExit','cDetail','cMap','cDual'], query:['cQuery','cBatch','cDnsQ'],
+    detect:['cConn','cAi','cCf','cCross','cSpeed'], privacy:['cLeak','cFp'], history:['cHist']};
+  var cardTab = {};
+  Object.keys(TABS).forEach(function(t){ TABS[t].forEach(function(c){ cardTab[c] = t; }); });
+  function activate(t){
+    if(!TABS[t]) t = 'home';
+    document.querySelectorAll('#qnav a').forEach(function(a){ a.classList.toggle('on', a.dataset.tab === t); });
+    document.querySelectorAll('.tabpage').forEach(function(p){ p.classList.toggle('on', p.id === 'pg-' + t); });
+  }
+  document.querySelectorAll('#qnav a').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault(); activate(a.dataset.tab);
+      history.replaceState(null, '', '#' + a.dataset.tab);
+      window.scrollTo(0, 0);
+    });
+  });
+  var h0 = (window.__initHash || '').slice(1);
+  activate(cardTab[h0] || h0 || 'home');
+  if(cardTab[h0]) setTimeout(function(){
+    var el = document.getElementById(h0);
+    if(el) el.scrollIntoView();
+  }, 80);
+  window.addEventListener('hashchange', function(){
+    var x = location.hash.slice(1);
+    if(cardTab[x]){ activate(x && cardTab[x]); var el = document.getElementById(x); if(el) setTimeout(function(){ el.scrollIntoView(); }, 40); }
+    else if(TABS[x]) activate(x);
+  });
+  var mb = document.getElementById('miniBar');
+  function syncMini(){
+    var ipEl = document.getElementById('myV4');
+    var ip = ipEl ? ipEl.textContent.trim() : '';
+    if(ip && ip !== '检测中…' && ip.indexOf('失败') < 0 && ip.indexOf('未') < 0){
+      mb.style.display = '';
+      document.getElementById('miniIp').textContent = ip;
+      var sc = document.getElementById('purityNum');
+      var sv = sc ? sc.textContent.trim() : '';
+      document.getElementById('miniScore').textContent = (sv && sv !== '–') ? '· 纯净度 ' + sv : '';
+    }
+  }
+  var mo = new MutationObserver(syncMini);
+  ['myV4', 'purityNum'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) mo.observe(el, {childList: true, characterData: true, subtree: true});
+  });
+  syncMini();
+})();
 </script>
 </body>
 </html>
