@@ -66,6 +66,7 @@ ul.check{padding-left:20px;margin:6px 0}
 <header class="top">
   <h1>🛡️ 我的 IP 监测站</h1>
   <button id="runAll" onclick="runAll()">▶ 一键体检</button>
+  <button class="ghost" onclick="exportReport()">⬇ 导出报告</button>
   <span class="muted small" id="lastRun"></span>
   <div class="sub">IP 纯净度 · 风控值 · 归属/ASN · WebRTC / DNS 泄露 · 连通性 · AI 可达性 · 指纹一致性 —— 参考 One IP、IPSuper、ping0、IPCheck.ing、TcpTest 的长处综合而成。</div>
 </header>
@@ -121,6 +122,16 @@ ul.check{padding-left:20px;margin:6px 0}
     <button onclick="queryIp()">查询</button>
   </div>
   <div id="qResult" style="margin-top:10px"></div>
+</div>
+
+<!-- 批量查询 -->
+<div class="card" style="margin-top:14px">
+  <h2>批量查 IP <span class="r">一行一个，最多 10 个，适合筛节点池</span></h2>
+  <div class="row">
+    <input type="text" id="batchIps" placeholder="粘贴多个 IP，用空格或逗号分隔，如 1.1.1.1, 8.8.8.8">
+    <button onclick="queryBatch()">批量查询</button>
+  </div>
+  <div id="batchResult" style="margin-top:10px"></div>
 </div>
 
 <!-- 连通性 + AI -->
@@ -278,6 +289,37 @@ async function queryIp(){
     ['类型', guessType(info, risk)], ['经纬度', info.latitude+', '+info.longitude]
   ].map(([k,v])=>'<div class="kv"><span>'+k+'</span><b>'+v+'</b></div>').join('')
   + (rv!==null ? '<div style="margin-top:6px">风控值 <b style="color:'+band[1]+'">'+rv+'</b> · '+band[0]+'（纯净度 '+(100-rv)+'）</div>' : '<div class="muted small" style="margin-top:6px">风险库暂不可用，未给出分数。</div>');
+}
+
+/* ---------- 批量查询 + 导出 ---------- */
+async function queryBatch(){
+  const raw = $('batchIps').value.trim();
+  const ips = [...new Set(raw.split(/[\s,，;；]+/).filter(Boolean))].slice(0,10);
+  if(!ips.length){ $('batchResult').innerHTML = '<span class="fail">先粘贴至少一个 IP。</span>'; return; }
+  $('batchResult').innerHTML = '<span class="spin"></span> 逐个查询中（'+ips.length+' 个）…';
+  const rows = [];
+  for(const ip of ips){
+    let info=null, risk=null;
+    try{ info = await getJson('https://ipwho.is/'+encodeURIComponent(ip), 9000); }catch(e){}
+    try{ const pc = await getJson('https://proxycheck.io/v2/'+encodeURIComponent(ip)+'?vpn=1&risk=1', 9000); risk = pc && pc[ip]; }catch(e){}
+    if(!info || info.success===false){ rows.push([ip,'查不到','–','–','–']); continue; }
+    const rv = risk && typeof risk.risk==='number' ? risk.risk : null;
+    rows.push([ip, (info.flag?info.flag.emoji+' ':'')+info.country+' '+info.city,
+      guessType(info, risk), rv!==null? String(rv):'–', rv!==null? String(100-rv):'–']);
+  }
+  $('batchResult').innerHTML = '<table><tr><th>IP</th><th>归属</th><th>类型</th><th class="ms">风控值</th><th class="ms">纯净度</th></tr>'
+    + rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td class="ms">'+r[3]+'</td><td class="ms">'+r[4]+'</td></tr>').join('') + '</table>'
+    + '<div class="small muted" style="margin-top:6px">按纯净度从高到低挑，就是你的优先顺序。</div>';
+}
+function exportReport(){
+  const rep = { time: new Date().toISOString(), exitIPv4: state.v4, exitIPv6: state.v6,
+    info: state.info, risk: state.risk, webrtcPublic: state.rtcPublic, webrtcLocal: state.rtcLocal, dns: state.dns,
+    browser: { ua: navigator.userAgent, lang: navigator.language, tz: Intl.DateTimeFormat().resolvedOptions().timeZone } };
+  const blob = new Blob([JSON.stringify(rep, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ip-report-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
 }
 
 /* ---------- 连通性 / AI ---------- */
