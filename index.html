@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的 IP 监测站 · IP 纯净度 / 风险 / 泄露 一键体检</title>
+<meta name="description" content="一站式 IP 与网络诊断：IP 归属、ASN、纯净度评分、风控值、WebRTC/DNS 泄露、连通性测速、AI 服务可达性、浏览器指纹一致性。">
+<style>
+:root{
+  --bg:#0d1117; --card:#161b26; --card2:#1b2231; --line:#262e40;
+  --text:#e8ecf3; --muted:#8b96a9; --good:#2fbf71; --warn:#f5b83d;
+  --bad:#ef5350; --mid:#a3c14a; --accent:#4f8cff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;line-height:1.6}
+a{color:var(--accent)}
+.wrap{max-width:1020px;margin:0 auto;padding:0 16px 40px}
+header.top{display:flex;align-items:center;gap:12px;padding:22px 0 8px;flex-wrap:wrap}
+header.top h1{font-size:24px;margin:0}
+header.top .sub{color:var(--muted);font-size:14px;width:100%}
+button{background:var(--accent);color:#fff;border:0;border-radius:10px;
+  padding:9px 18px;font-size:15px;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+button:disabled{opacity:.5;cursor:wait}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h2{font-size:17px;margin:0 0 12px}
+.card h2 .r{float:right;font-size:13px;color:var(--muted);font-weight:400}
+.big-ip{font-size:21px;font-weight:700;word-break:break-all}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:500;text-align:right}
+.muted{color:var(--muted)} .small{font-size:13px}
+.tag{display:inline-block;border-radius:9px;padding:1px 9px;font-size:12px;margin-right:6px;
+  background:var(--card2);border:1px solid var(--line)}
+.tag.good{color:var(--good);border-color:var(--good)}
+.tag.bad{color:var(--bad);border-color:var(--bad)}
+.tag.warn{color:var(--warn);border-color:var(--warn)}
+.ring-wrap{display:flex;align-items:center;gap:18px}
+.ring{position:relative;width:128px;height:128px;flex:none}
+.ring svg{transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .num b{font-size:34px;line-height:1}
+.ring .num span{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+tr:last-child td{border-bottom:0}
+.ms{font-variant-numeric:tabular-nums;text-align:right}
+.ok{color:var(--good)} .fail{color:var(--bad)} .slow{color:var(--warn)}
+input[type=text]{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:10px;
+  color:var(--text);padding:9px 12px;font-size:15px;min-width:180px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+iframe.map{width:100%;height:220px;border:0;border-radius:10px;background:var(--card2)}
+footer{color:var(--muted);font-size:13px;margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);
+  border-top-color:var(--accent);border-radius:50%;animation:s 0.8s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+.check li{margin:3px 0;font-size:14px}
+ul.check{padding-left:20px;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>🛡️ 我的 IP 监测站</h1>
+  <button id="runAll" onclick="runAll()">▶ 一键体检</button>
+  <span class="muted small" id="lastRun"></span>
+  <div class="sub">IP 纯净度 · 风控值 · 归属/ASN · WebRTC / DNS 泄露 · 连通性 · AI 可达性 · 指纹一致性 —— 参考 One IP、IPSuper、ping0、IPCheck.ing、TcpTest 的长处综合而成。</div>
+</header>
+
+<!-- 总览 -->
+<div class="grid">
+  <div class="card">
+    <h2>综合评分 <span class="r">学 IPSuper 的安全分 + ping0 的风控分档</span></h2>
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="128" height="128">
+          <circle cx="64" cy="64" r="56" stroke="#262e40" stroke-width="11" fill="none"/>
+          <circle id="ringFg" cx="64" cy="64" r="56" stroke="#8b96a9" stroke-width="11" fill="none"
+                  stroke-linecap="round" stroke-dasharray="351.8" stroke-dashoffset="351.8"/>
+        </svg>
+        <div class="num"><b id="purityNum">–</b><span>纯净度</span></div>
+      </div>
+      <div>
+        <div>风控值：<b id="riskVal">–</b> <span id="riskBand"></span></div>
+        <div style="margin-top:6px">IP 类型：<span id="ipTypeTags"><span class="muted">检测中…</span></span></div>
+        <div class="muted small" style="margin-top:6px" id="scoreNote">纯净度 = 100 − 风控值。分档：≤15 极度纯净 · 15-25 纯净 · 25-40 中性 · 40-50 轻微风险 · 50-70 稍高风险 · &gt;70 极度风险。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>我的出口 IP <span class="r">学 One IP 的双探针</span></h2>
+    <div class="small muted">IPv4 出口</div>
+    <div class="big-ip" id="myV4">检测中…</div>
+    <div class="small muted" style="margin-top:8px">IPv6 出口</div>
+    <div class="big-ip" id="myV6">检测中…</div>
+    <div class="small muted" style="margin-top:8px" id="dualNote"></div>
+  </div>
+</div>
+
+<!-- IP 详情 + 地图 -->
+<div class="grid">
+  <div class="card">
+    <h2>IP 详情 <span class="r">归属 / ASN / 时区 / 经纬度</span></h2>
+    <div id="ipDetail"><span class="spin"></span> 加载中…</div>
+  </div>
+  <div class="card">
+    <h2>位置地图</h2>
+    <div id="mapBox"><div class="muted">等定位数据…</div></div>
+  </div>
+</div>
+
+<!-- 任意 IP 查询 -->
+<div class="card" style="margin-top:14px">
+  <h2>查任意 IP <span class="r">学 ping0 / IPSuper 的单 IP 画像</span></h2>
+  <div class="row">
+    <input type="text" id="qIp" placeholder="输入任意 IPv4 / IPv6，如 64.110.104.30">
+    <button onclick="queryIp()">查询</button>
+  </div>
+  <div id="qResult" style="margin-top:10px"></div>
+</div>
+
+<!-- 连通性 + AI -->
+<div class="grid">
+  <div class="card">
+    <h2>连通性测速 <span class="r">学 TcpTest / One IP 的站点延迟</span></h2>
+    <table id="connTable"><tr><td class="muted">点「一键体检」开始</td></tr></table>
+    <div class="small muted" style="margin-top:8px">从你的浏览器实测到各站点的响应时间，反映你本地线路质量（不是服务器多地 Ping）。</div>
+  </div>
+  <div class="card">
+    <h2>AI 服务可达性 <span class="r">学 One IP 的 AI 状态聚合</span></h2>
+    <table id="aiTable"><tr><td class="muted">点「一键体检」开始</td></tr></table>
+    <div class="small muted" style="margin-top:8px">能打开 ≠ 能注册/不被风控，还要看出口 IP 所在地区是否在服务支持范围内。</div>
+  </div>
+</div>
+
+<!-- 泄露 + 指纹 -->
+<div class="grid">
+  <div class="card">
+    <h2>泄露检测 <span class="r">学 IPCheck.ing 的 WebRTC / DNS</span></h2>
+    <div class="kv"><span>WebRTC 暴露的公网 IP</span><b id="rtcIp">未检测</b></div>
+    <div class="kv"><span>WebRTC 本地内网 IP</span><b id="rtcLocal">未检测</b></div>
+    <div class="kv"><span>WebRTC 判定</span><b id="rtcJudge">–</b></div>
+    <div class="kv"><span>DNS 出口 IP</span><b id="dnsIp">未检测</b></div>
+    <div class="kv"><span>DNS 出口归属</span><b id="dnsGeo">–</b></div>
+    <div class="kv"><span>DNS 判定</span><b id="dnsJudge">–</b></div>
+  </div>
+  <div class="card">
+    <h2>浏览器指纹 & 环境一致性 <span class="r">学 Whoer 的逐项扣分</span></h2>
+    <div>一致性得分：<b id="fpScore" style="font-size:20px">–</b><span class="muted small"> / 100</span></div>
+    <ul class="check" id="fpList"><li class="muted">点「一键体检」开始</li></ul>
+    <div class="small muted" id="fpDetail"></div>
+  </div>
+</div>
+
+<!-- 历史 -->
+<div class="card" style="margin-top:14px">
+  <h2>检测历史 <span class="r">只存在你自己的浏览器里 · 学 MyIP 的本地历史</span></h2>
+  <div id="history"><span class="muted small">暂无记录</span></div>
+</div>
+
+<footer>
+  数据源：ipwho.is（归属/ASN）、proxycheck.io（风险/代理判定）、edns.ip-api.com（DNS 出口）、OpenStreetMap（地图），均为公开免费接口。<br>
+  说明：各家的风险分口径不同、不能横向直接比，本站分数是多源综合估算，只作参考；重要结论建议再用
+  <a href="https://ping0.cc" target="_blank" rel="noopener">ping0.cc</a>、
+  <a href="https://ipsuper.com" target="_blank" rel="noopener">ipsuper.com</a>、
+  <a href="https://scamalytics.com/ip" target="_blank" rel="noopener">Scamalytics</a> 交叉复核。<br>
+  我的 IP 监测站 · 纯静态页面，可部署在 Cloudflare Pages（如 ip.ymaym.top）。
+</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const timeout = (ms) => new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms));
+async function fetchT(url, ms=9000, opts={}){
+  return Promise.race([fetch(url, opts), timeout(ms)]);
+}
+async function getJson(url, ms){ const r = await fetchT(url, ms||9000); if(!r.ok) throw new Error(r.status); return r.json(); }
+
+let state = { v4:null, v6:null, info:null, risk:null, rtcPublic:[], rtcLocal:[], dns:null };
+
+/* ---------- 出口 IP ---------- */
+async function detectExit(){
+  const jobs = [];
+  jobs.push(getJson('https://api.ipify.org?format=json',6000).then(d=>{ state.v4=d.ip; $('myV4').textContent=d.ip; }).catch(()=>{ $('myV4').textContent='未检测到'; }));
+  jobs.push(getJson('https://api6.ipify.org?format=json',6000).then(d=>{ state.v6=d.ip; $('myV6').textContent=d.ip; }).catch(()=>{ $('myV6').textContent='无 IPv6 出口'; }));
+  await Promise.allSettled(jobs);
+  const main = state.v4 || state.v6;
+  if(main){
+    $('dualNote').textContent = state.v4 && state.v6 ? '双栈出口都在，注意两条出口的归属地是否一致（不一致容易被风控）。' : '当前为单栈出口。';
+    await loadInfo(main);
+  }
+}
+
+/* ---------- IP 信息 + 风险 ---------- */
+const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7'];
+function guessType(info, risk){
+  const s = ((info&&((info.connection&&info.connection.isp)||''))+' '+((info&&info.org)||'')).toLowerCase();
+  if(risk && risk.type) return risk.type; // VPN / Proxy / Residential 等（proxycheck 口径）
+  if(DC_WORDS.some(w=>s.includes(w))) return '机房/数据中心（推测）';
+  return '住宅/运营商（推测）';
+}
+async function loadInfo(ip){
+  try{ state.info = await getJson('https://ipwho.is/'+encodeURIComponent(ip), 9000); }catch(e){ state.info = null; }
+  try{
+    const pc = await getJson('https://proxycheck.io/v2/'+encodeURIComponent(ip)+'?vpn=1&risk=1', 9000);
+    state.risk = (pc && pc[ip]) ? pc[ip] : null;
+  }catch(e){ state.risk = null; }
+  renderInfo(ip);
+  renderScore(ip);
+  saveHistory(ip);
+}
+function renderInfo(ip){
+  const d = state.info;
+  if(!d || d.success===false){ $('ipDetail').innerHTML = '<span class="fail">归属数据获取失败，稍后重试。</span>'; return; }
+  const c = d.connection||{};
+  const tz = d.timezone ? (d.timezone.id||'') : '';
+  $('ipDetail').innerHTML = [
+    ['IP', ip], ['归属', (d.flag?d.flag.emoji+' ':'')+d.country+' · '+d.region+' · '+d.city],
+    ['运营商 / ISP', c.isp||'–'], ['ASN', c.asn?('AS'+c.asn):'–'],
+    ['组织', c.org||'–'], ['时区', tz||'–'],
+    ['经纬度', d.latitude+', '+d.longitude], ['邮编', d.postal||'–']
+  ].map(([k,v])=>'<div class="kv"><span>'+k+'</span><b>'+v+'</b></div>').join('');
+  $('mapBox').innerHTML = '<iframe class="map" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox='
+    + (d.longitude-0.35)+'%2C'+(d.latitude-0.2)+'%2C'+(d.longitude+0.35)+'%2C'+(d.latitude+0.2)
+    + '&layer=mapnik&marker='+d.latitude+'%2C'+d.longitude+'"></iframe>';
+}
+function bandOf(risk){
+  if(risk<=15) return ['极度纯净','var(--good)'];
+  if(risk<=25) return ['纯净','var(--good)'];
+  if(risk<=40) return ['中性','var(--mid)'];
+  if(risk<=50) return ['轻微风险','var(--warn)'];
+  if(risk<=70) return ['稍高风险','var(--warn)'];
+  return ['极度风险','var(--bad)'];
+}
+function renderScore(ip){
+  let risk, src;
+  if(state.risk && typeof state.risk.risk === 'number'){ risk = state.risk.risk; src='proxycheck 风险库'; }
+  else{
+    const t = guessType(state.info, null);
+    risk = t.includes('机房') ? 55 : 18; src='本地启发式推测（风险库不可用）';
+  }
+  const purity = 100 - risk;
+  const [band, color] = bandOf(risk);
+  $('purityNum').textContent = purity;
+  $('riskVal').textContent = risk;
+  const rb = $('riskBand'); rb.textContent = '· '+band; rb.style.color = color;
+  const ring = $('ringFg');
+  ring.style.stroke = color;
+  ring.style.strokeDashoffset = (351.8 * (1 - purity/100)).toFixed(1);
+  const type = guessType(state.info, state.risk);
+  const proxy = state.risk ? state.risk.proxy : null;
+  $('ipTypeTags').innerHTML =
+    '<span class="tag '+(type.includes('机房')||/vpn|proxy|tor/i.test(type)?'warn':'good')+'">'+type+'</span>'
+    + (proxy ? '<span class="tag '+(proxy==='yes'?'bad':'good')+'">'+(proxy==='yes'?'被标记为代理/VPN':'未标记代理')+'</span>' : '')
+    + (state.info ? '<span class="tag">'+state.info.type+'</span>' : '');
+  $('scoreNote').textContent = '纯净度 = 100 − 风控值（来源：'+src+'）。分档：≤15 极度纯净 · 15-25 纯净 · 25-40 中性 · 40-50 轻微风险 · 50-70 稍高风险 · >70 极度风险。';
+}
+
+/* ---------- 任意 IP 查询 ---------- */
+async function queryIp(){
+  const ip = $('qIp').value.trim();
+  if(!ip){ $('qResult').innerHTML = '<span class="fail">先输入一个 IP。</span>'; return; }
+  $('qResult').innerHTML = '<span class="spin"></span> 查询中…';
+  let info=null, risk=null;
+  try{ info = await getJson('https://ipwho.is/'+encodeURIComponent(ip), 9000); }catch(e){}
+  try{ const pc = await getJson('https://proxycheck.io/v2/'+encodeURIComponent(ip)+'?vpn=1&risk=1', 9000); risk = pc && pc[ip]; }catch(e){}
+  if(!info || info.success===false){ $('qResult').innerHTML = '<span class="fail">查不到这个 IP，检查一下格式。</span>'; return; }
+  const c = info.connection||{};
+  const rv = risk && typeof risk.risk==='number' ? risk.risk : null;
+  const band = rv!==null ? bandOf(rv) : null;
+  $('qResult').innerHTML = [
+    ['IP', ip], ['归属', (info.flag?info.flag.emoji+' ':'')+info.country+' · '+info.region+' · '+info.city],
+    ['ISP / 组织', (c.isp||'–')+' / '+(c.org||'–')], ['ASN', c.asn?('AS'+c.asn):'–'],
+    ['类型', guessType(info, risk)], ['经纬度', info.latitude+', '+info.longitude]
+  ].map(([k,v])=>'<div class="kv"><span>'+k+'</span><b>'+v+'</b></div>').join('')
+  + (rv!==null ? '<div style="margin-top:6px">风控值 <b style="color:'+band[1]+'">'+rv+'</b> · '+band[0]+'（纯净度 '+(100-rv)+'）</div>' : '<div class="muted small" style="margin-top:6px">风险库暂不可用，未给出分数。</div>');
+}
+
+/* ---------- 连通性 / AI ---------- */
+async function probe(url){
+  const t0 = performance.now();
+  try{ await fetchT(url, 6000, {mode:'no-cors', cache:'no-store'}); return Math.round(performance.now()-t0); }
+  catch(e){ return -1; }
+}
+function msCell(ms){
+  if(ms<0) return '<span class="fail">超时/不可达</span>';
+  const cls = ms<300 ? 'ok' : (ms<900 ? 'slow' : 'fail');
+  return '<span class="'+cls+'">'+ms+' ms</span>';
+}
+async function runConn(){
+  const sites = [
+    ['百度','https://www.baidu.com/favicon.ico'], ['淘宝','https://www.taobao.com/favicon.ico'],
+    ['哔哩哔哩','https://www.bilibili.com/favicon.ico'], ['知乎','https://www.zhihu.com/favicon.ico'],
+    ['Google','https://www.google.com/generate_204'], ['YouTube','https://www.youtube.com/generate_204'],
+    ['GitHub','https://github.com/favicon.ico'], ['Cloudflare','https://www.cloudflare.com/favicon.ico'],
+    ['X / Twitter','https://x.com/favicon.ico'], ['维基百科','https://www.wikipedia.org/favicon.ico']
+  ];
+  $('connTable').innerHTML = sites.map(s=>'<tr><td>'+s[0]+'</td><td class="ms" id="c_'+s[0]+'"><span class="spin"></span></td></tr>').join('');
+  await Promise.all(sites.map(async s=>{ const ms = await probe(s[1]); $('c_'+s[0]).innerHTML = msCell(ms); }));
+}
+async function runAI(){
+  const ais = [
+    ['ChatGPT','https://chatgpt.com/favicon.ico','美国 OpenAI'],
+    ['Claude','https://claude.ai/favicon.ico','美国 Anthropic'],
+    ['Gemini','https://gemini.google.com/favicon.ico','美国 Google'],
+    ['Grok','https://grok.com/favicon.ico','美国 xAI'],
+    ['DeepSeek','https://www.deepseek.com/favicon.ico','中国'],
+    ['Kimi','https://www.kimi.com/favicon.ico','中国']
+  ];
+  $('aiTable').innerHTML = ais.map(s=>'<tr><td>'+s[0]+' <span class="muted small">'+s[2]+'</span></td><td class="ms" id="a_'+s[0]+'"><span class="spin"></span></td></tr>').join('');
+  await Promise.all(ais.map(async s=>{ const ms = await probe(s[1]); $('a_'+s[0]).innerHTML = msCell(ms); }));
+}
+
+/* ---------- WebRTC ---------- */
+function runRTC(){
+  return new Promise(resolve=>{
+    const pubs = new Set(), locals = new Set();
+    let pc;
+    try{ pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]}); }
+    catch(e){ $('rtcJudge').innerHTML='<span class="fail">浏览器不支持 WebRTC</span>'; return resolve(); }
+    pc.createDataChannel('x');
+    pc.onicecandidate = ev=>{
+      if(!ev.candidate){ finish(); return; }
+      const m = /([0-9a-fA-F:.]+)\s\d+\s/.exec(ev.candidate.candidate+' ');
+      if(!m) return;
+      const ip = m[1];
+      if(/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|fd|fe80|::1)/.test(ip) || ip.includes('.local')) locals.add(ip);
+      else pubs.add(ip);
+    };
+    function finish(){
+      state.rtcPublic = [...pubs]; state.rtcLocal = [...locals];
+      $('rtcIp').textContent = state.rtcPublic.length ? state.rtcPublic.join('，') : '未暴露（好）';
+      $('rtcLocal').textContent = state.rtcLocal.length ? state.rtcLocal.join('，') : '未暴露';
+      const exit = state.v4 || state.v6;
+      if(state.rtcPublic.length && exit && !state.rtcPublic.includes(exit))
+        $('rtcJudge').innerHTML = '<span class="fail">⚠️ 与出口 IP 不一致，可能泄露真实 IP</span>';
+      else if(state.rtcPublic.length)
+        $('rtcJudge').innerHTML = '<span class="ok">✓ 与出口 IP 一致</span>';
+      else $('rtcJudge').innerHTML = '<span class="ok">✓ 未暴露公网 IP</span>';
+      try{ pc.close(); }catch(e){}
+      resolve();
+    }
+    pc.createOffer().then(o=>pc.setLocalDescription(o)).catch(()=>finish());
+    setTimeout(finish, 4000);
+  });
+}
+
+/* ---------- DNS 出口 ---------- */
+async function runDNS(){
+  try{
+    const d = await getJson('https://edns.ip-api.com/json', 9000);
+    const dns = d && d.dns; if(!dns) throw 0;
+    state.dns = dns;
+    $('dnsIp').textContent = dns.ip || '–';
+    $('dnsGeo').textContent = (dns.geo || '–');
+    const ipCountry = state.info ? state.info.country_code : null;
+    const dnsCountry = (dns.geo||'').slice(0,2);
+    if(ipCountry && dnsCountry && ipCountry !== dnsCountry)
+      $('dnsJudge').innerHTML = '<span class="warn" style="color:var(--warn)">⚠️ DNS 出口国家与 IP 归属不一致，可能存在 DNS 泄露</span>';
+    else $('dnsJudge').innerHTML = '<span class="ok">✓ 未见明显泄露</span>';
+  }catch(e){
+    $('dnsIp').textContent = '检测失败'; $('dnsJudge').textContent = '接口不可用，跳过';
+  }
+}
+
+/* ---------- 指纹与一致性 ---------- */
+function runFP(){
+  const nav = navigator;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const lang = nav.language || '';
+  const items = []; let score = 100;
+  const ipTz = state.info && state.info.timezone ? (state.info.timezone.id||'') : '';
+  if(ipTz){
+    if(ipTz === tz) items.push(['✓ 浏览器时区与 IP 时区一致（'+tz+'）', 0]);
+    else { items.push(['✗ 时区不一致：浏览器 '+tz+' vs IP '+ipTz+'（扣 25）', -25]); score -= 25; }
+  }
+  const ipCc = state.info ? state.info.country_code : '';
+  const langRegion = (lang.split('-')[1]||'').toUpperCase();
+  if(ipCc && langRegion){
+    if(ipCc === langRegion) items.push(['✓ 浏览器语言地区与 IP 归属一致（'+lang+'）', 0]);
+    else { items.push(['△ 语言地区 '+langRegion+' 与 IP 归属 '+ipCc+' 不同（扣 10，人在国外用母语也常见）', -10]); score -= 10; }
+  }
+  const exit = state.v4 || state.v6;
+  if(state.rtcPublic.length && exit && !state.rtcPublic.includes(exit)){ items.push(['✗ WebRTC 暴露了与出口不同的 IP（扣 30）', -30]); score -= 30; }
+  else items.push(['✓ WebRTC 未泄露其他公网 IP', 0]);
+  if(state.dns && ipCc){
+    const dc = (state.dns.geo||'').slice(0,2);
+    if(dc && dc !== ipCc){ items.push(['✗ DNS 出口国家与 IP 归属不一致（扣 20）', -20]); score -= 20; }
+    else items.push(['✓ DNS 出口与 IP 归属一致', 0]);
+  }
+  $('fpScore').textContent = Math.max(0, score);
+  $('fpList').innerHTML = items.map(i=>'<li>'+i[0]+'</li>').join('') || '<li class="muted">数据不足</li>';
+  let gl = '';
+  try{
+    const cv = document.createElement('canvas'); const ctx = cv.getContext('webgl');
+    const ext = ctx && ctx.getExtension('WEBGL_debug_renderer_info');
+    if(ext) gl = ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+  }catch(e){}
+  $('fpDetail').textContent = 'UA：'+nav.userAgent+' ｜ 平台：'+nav.platform+' ｜ 屏幕：'+screen.width+'×'+screen.height
+    +' ｜ CPU 核数：'+(nav.hardwareConcurrency||'–')+' ｜ 内存：'+(nav.deviceMemory||'–')+'GB'+(gl?(' ｜ GPU：'+gl):'');
+}
+
+/* ---------- 历史 ---------- */
+function saveHistory(ip){
+  try{
+    const key='ipstation_history'; const arr = JSON.parse(localStorage.getItem(key)||'[]');
+    arr.unshift({t:Date.now(), ip:ip, cc: state.info?state.info.country:'–',
+      risk: state.risk && typeof state.risk.risk==='number' ? state.risk.risk : null});
+    localStorage.setItem(key, JSON.stringify(arr.slice(0,10)));
+    renderHistory();
+  }catch(e){}
+}
+function renderHistory(){
+  try{
+    const arr = JSON.parse(localStorage.getItem('ipstation_history')||'[]');
+    if(!arr.length) return;
+    $('history').innerHTML = arr.map(h=>'<div class="kv"><span>'+new Date(h.t).toLocaleString()+'</span><b>'+h.ip+' · '+h.cc+(h.risk!==null?(' · 风控 '+h.risk):'')+'</b></div>').join('');
+  }catch(e){}
+}
+
+/* ---------- 主流程 ---------- */
+let running = false;
+async function runAll(){
+  if(running) return; running = true;
+  $('runAll').disabled = true;
+  await detectExit();
+  await Promise.allSettled([runConn(), runAI(), runRTC().then(()=>runDNS())]);
+  runFP();
+  $('lastRun').textContent = '上次体检：'+new Date().toLocaleString();
+  $('runAll').disabled = false; running = false;
+}
+renderHistory();
+runAll();
+</script>
+</body>
+</html>
