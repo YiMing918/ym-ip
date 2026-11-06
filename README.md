@@ -8,7 +8,7 @@
 ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue)
 ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black)
 ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
-![版本](https://img.shields.io/badge/版本-v1.4.4-blue)
+![版本](https://img.shields.io/badge/版本-v1.4.5-blue)
 
 > 本仓库只包含代码，不包含任何人的检测数据。下方截图均为**示例数据渲染**（演示 IP 为公共 DNS 地址 1.1.1.1），不是任何人的真实检测结果。
 > 检测历史只存在你自己的浏览器 localStorage 里，不上传、不经过任何服务器。
@@ -35,11 +35,11 @@
 
 桌面端：
 
-![桌面端](https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview.png)
+![桌面端](https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview-v3.png)
 
 移动端：
 
-<img src="https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview-mobile.png" width="360" alt="移动端">
+<img src="https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview-mobile-v3.png" width="360" alt="移动端">
 
 页面自上而下：综合评分 + 双出口 → IP 详情 + 地图 → 查任意 IP → 批量查 / 优选清单 → 连通性 / AI 可达性 → 泄露检测 + 指纹一致性 → CF 视角 + 多源交叉验证 → 双视角出口 → 带宽测速 + 域名解析 → 检测历史。
 
@@ -216,6 +216,7 @@ A：不会。历史只写在你当前浏览器的 localStorage 里，换浏览�
 
 ## 📜 版本历史
 
+- **v1.4.5（2026-11-06）**：效果预览图按当前界面（v1.4 全功能）重新渲染，仍为示例数据（演示 IP 1.1.1.1），不含任何真实检测记录
 - **v1.4.4（2026-11-06）**：仓库介绍维护：版本历史排序修正；亮点与免费额度口径更新；对比表补黑名单 / 双视角 / 测速三行；页面页脚数据源补全（效果预览图仍为 v1.1 示例渲染，待按当前界面重制）
 - **v1.4.3（2026-11-06）**：准确性打磨：类型推测补「Private Customer」类匿名主机段（此前 Yeah Tech 等 VPS 段会被高估为住宅）；站点所在地查不到时自动换备源补齐；清单模式标注地区与实测归属不符的行加 ⚠️；IPv6 画像加第二数据源并列（不一致时明示）
 - **v1.4.2（2026-11-06）**：连通性与 AI 两张表新增「服务器所在地」列——每个站点/AI 显示你实际连到的服务器在哪个国家/城市（域名解析 IP 定位，CDN 为边缘节点），不再只有延迟；清单模式修复：批量输入框改为多行文本框、解析器重写为全文扫描（端口/地区/标注正确拆列）；搜狐回显返回内网地址时视为未取到，不再据此误判分流
@@ -238,8 +239,8 @@ ym-ip/
 ├── index.html          # 全部功能就这一个文件（样式、脚本全内联）
 ├── _headers            # Cloudflare Pages 响应头（防缓存旧版页面）
 ├── docs/
-│   ├── preview.png         # 效果预览 · 桌面端（示例数据渲染）
-│   ├── preview-mobile.png  # 效果预览 · 移动端
+│   ├── preview-v3.png        # 效果预览 · 桌面端（示例数据渲染）
+│   ├── preview-mobile-v3.png # 效果预览 · 移动端
 │   ├── tut-deploy-1.png    # 部署示意图 1：连接 GitHub
 │   ├── tut-deploy-2.png    # 部署示意图 2：构建设置
 │   └── tut-deploy-3.png    # 部署示意图 3：绑定域名
