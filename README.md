@@ -8,7 +8,7 @@
 ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue)
 ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black)
 ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
-![版本](https://img.shields.io/badge/版本-v1.4.5-blue)
+![版本](https://img.shields.io/badge/版本-v1.5-blue)
 
 > 本仓库只包含代码，不包含任何人的检测数据。下方截图均为**示例数据渲染**（演示 IP 为公共 DNS 地址 1.1.1.1），不是任何人的真实检测结果。
 > 检测历史只存在你自己的浏览器 localStorage 里，不上传、不经过任何服务器。
@@ -19,6 +19,7 @@
 
 ## 🌟 版本亮点
 
+- **分类导航，手机不再长滚**：16 张卡按「概览 / 查询 / 检测 / 隐私 / 历史」五类收纳，吸顶导航一点即达，长表格（连通性 / AI / 历史等）改为卡内小窗滚动；导航下方常驻当前出口与纯净度（v1.5 新增）
 - **一个页面全测完**：出口 IP、纯净度、风控、泄露、连通性、AI 可达性、指纹一致性，点一次「一键体检」并行跑完，不用在六个网站之间来回跳
 - **双出口并显**：IPv4 / IPv6 两条出口分开测、分开展示，双栈归属不一致会直接提醒（这是很多风控的隐形扣分项）
 - **批量筛节点池**：一次粘贴最多 20 条，归属 / 类型 / 风控 / 纯净度一表出，还能直接吃优选清单格式，筛节点不用一个个查
@@ -35,11 +36,11 @@
 
 桌面端：
 
-![桌面端](https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview-v3.png)
+![桌面端](https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview-v4.png)
 
 移动端：
 
-<img src="https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview-mobile-v3.png" width="360" alt="移动端">
+<img src="https://gcore.jsdelivr.net/gh/YiMing918/ym-ip@main/docs/preview-mobile-v4.png" width="360" alt="移动端">
 
 页面自上而下：综合评分 + 双出口 → IP 详情 + 地图 → 查任意 IP → 批量查 / 优选清单 → 连通性 / AI 可达性 → 泄露检测 + 指纹一致性 → CF 视角 + 多源交叉验证 → 双视角出口 → 带宽测速 + 域名解析 → 检测历史。
 
@@ -216,6 +217,7 @@ A：不会。历史只写在你当前浏览器的 localStorage 里，换浏览�
 
 ## 📜 版本历史
 
+- **v1.5（2026-11-07）**：手机端美化——16 张卡重组为「概览 / 查询 / 检测 / 隐私 / 历史」五类分类导航（吸顶、一点即达，告别一直往下翻的长页面）；长表格改卡内小窗滚动（连通性 25 站 / AI 17 家 / 多源交叉 / 批量结果 / 历史）；导航下常驻迷你状态条（当前出口 + 纯净度，切到任何分类都看得见）；卡片深链（如 #cAi）自动落到对应分类；手机端紧凑间距。全部检测功能与口径不变，预览图按新界面以示例数据重制
 - **v1.4.5（2026-11-06）**：效果预览图按当前界面（v1.4 全功能）重新渲染，仍为示例数据（演示 IP 1.1.1.1），不含任何真实检测记录
 - **v1.4.4（2026-11-06）**：仓库介绍维护：版本历史排序修正；亮点与免费额度口径更新；对比表补黑名单 / 双视角 / 测速三行；页面页脚数据源补全（效果预览图仍为 v1.1 示例渲染，待按当前界面重制）
 - **v1.4.3（2026-11-06）**：准确性打磨：类型推测补「Private Customer」类匿名主机段（此前 Yeah Tech 等 VPS 段会被高估为住宅）；站点所在地查不到时自动换备源补齐；清单模式标注地区与实测归属不符的行加 ⚠️；IPv6 画像加第二数据源并列（不一致时明示）
@@ -239,8 +241,8 @@ ym-ip/
 ├── index.html          # 全部功能就这一个文件（样式、脚本全内联）
 ├── _headers            # Cloudflare Pages 响应头（防缓存旧版页面）
 ├── docs/
-│   ├── preview-v3.png        # 效果预览 · 桌面端（示例数据渲染）
-│   ├── preview-mobile-v3.png # 效果预览 · 移动端
+│   ├── preview-v4.png        # 效果预览 · 桌面端（示例数据渲染）
+│   ├── preview-mobile-v4.png # 效果预览 · 移动端
 │   ├── tut-deploy-1.png    # 部署示意图 1：连接 GitHub
 │   ├── tut-deploy-2.png    # 部署示意图 2：构建设置
 │   └── tut-deploy-3.png    # 部署示意图 3：绑定域名
