@@ -396,7 +396,7 @@ async function probe(url){
 }
 function msCell(ms){
   if(ms<0) return '<span class="fail">超时/不可达</span>';
-  const cls = ms<300 ? 'ok' : (ms<900 ? 'slow' : 'fail');
+  const cls = ms<400 ? 'ok' : (ms<1500 ? 'slow' : 'fail');
   return '<span class="'+cls+'">'+ms+' ms</span>';
 }
 async function runConn(){
@@ -821,26 +821,35 @@ async function baiduLoc(ip){
   }catch(e){ return null; }
 }
 async function sohuEcho(){
-  try{
-    window.returnCitySN = undefined;
-    await jsonpLoad('https://pv.sohu.com/cityjson?ie=utf-8');
-    const d = window.returnCitySN;
-    return d && d.cip ? d : null;
-  }catch(e){ return null; }
+  for(let i=0;i<2;i++){
+    try{
+      window.returnCitySN = undefined;
+      await jsonpLoad('https://pv.sohu.com/cityjson?ie=utf-8&_r=' + Math.random().toString(36).slice(2));
+      const d = window.returnCitySN;
+      if(d && d.cip) return d;
+    }catch(e){}
+  }
+  return null;
 }
 async function runDualView(){
   const ip = state.v4 || state.v6; if(!ip) return;
   const a = state.info || {};
   const rows = [['国外库（ipwho.is）', (a.country || '–') + (a.city ? ' · ' + a.city : '')]];
   const bd = state.v4 ? await baiduLoc(state.v4) : null;
-  rows.push(['国内库（百度）', bd || '未查到']);
+  let bdTxt = bd || '未查到';
+  if(bd && a.country){
+    const CN2EN = {'日本':'Japan','美国':'United States','中国':'China','新加坡':'Singapore','韩国':'South Korea','英国':'United Kingdom','德国':'Germany','法国':'France','加拿大':'Canada','澳大利亚':'Australia','印度':'India','俄罗斯':'Russia','荷兰':'Netherlands','中国香港':'Hong Kong','中国台湾':'Taiwan'};
+    const bdCountry = Object.keys(CN2EN).find(k=>bd.startsWith(k));
+    if(bdCountry && CN2EN[bdCountry] !== a.country) bdTxt += '（与国外库不一致：国内库对海外云厂商 IP 常按注册地标）';
+  }
+  rows.push(['国内库（百度）', bdTxt]);
   const sh = await sohuEcho();
   if(sh){
     rows.push(['国内服务（搜狐）看到的出口', sh.cip + (sh.cname ? '（' + sh.cname + '）' : '')]);
     const same = state.v4 && sh.cip === state.v4;
     rows.push(['判定', same ? '✓ 国内、国外视角是同一个出口（全局代理）'
       : '⚠️ 国内服务看到的出口与国外视角不同：可能开了分流（国内直连），或你的客户端在多出口间轮换']);
-  } else rows.push(['国内服务（搜狐）看到的出口', '未取到']);
+  } else rows.push(['国内服务（搜狐）看到的出口', '未取到（国内探针从当前网络不可达）']);
   $('dualView').innerHTML = rows.map(([k,v])=>'<div class="kv"><span>'+k+'</span><b style="text-align:right">'+v+'</b></div>').join('')
     + '<div class="small muted" style="margin-top:6px">同一个 IP，国内数据库与国外数据库的定位经常不同；分流与否，要看国内服务实际拿到的出口是不是你的代理出口。</div>';
 }
