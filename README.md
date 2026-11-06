@@ -8,7 +8,7 @@
 ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue)
 ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black)
 ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
-![版本](https://img.shields.io/badge/版本-v1.3-blue)
+![版本](https://img.shields.io/badge/版本-v1.4-blue)
 
 > 本仓库只包含代码，不包含任何人的检测数据。下方截图均为**示例数据渲染**（演示 IP 为公共 DNS 地址 1.1.1.1），不是任何人的真实检测结果。
 > 检测历史只存在你自己的浏览器 localStorage 里，不上传、不经过任何服务器。
@@ -24,6 +24,8 @@
 - **批量筛节点池**：一次粘贴最多 10 个 IP，归属 / 类型 / 风控 / 纯净度一表出，筛优选 IP、筛节点时不用一个个查
 - **报告可导出**：本次检测一键导出 JSON，存档、发人复核都方便
 - **多源交叉 + CF 视角**：同一出口两家数据库对照打架一眼可见，还能看到这条线路接入了 Cloudflare 的哪个机房——挑优选 IP 时这是最实在的参考
+- **双视角出口**：国内数据库（百度）与国内服务（搜狐）看到的你，和国外视角是不是同一个出口——分流没分流，一测便知
+- **优选清单模式**：`IP:端口#地区 [类型]` 格式的清单整段粘贴，逐条出画像并按纯净度排好优先顺序
 - **顺手工具箱**：带宽测速、域名解析查询、IP 黑名单检测都内置了，不用再开别的站
 - **代码与数据彻底分离**：仓库只有代码，你的数据只活在你自己的浏览器里
 
@@ -54,25 +56,26 @@
 ### 🌐 出口与画像（学 One IP 的双探针 + ping0 的单 IP 画像）
 
 - **IPv4 / IPv6 双出口**：分别探测；归属、运营商、ASN、组织、时区、经纬度、邮编全列，附 OpenStreetMap 定位地图（无需地图密钥）
-- **查任意 IP**：任意 IPv4 / IPv6 出完整画像（含地图链接与黑名单检测）；**批量查 IP**：最多 10 个并排对比，按纯净度挑优先顺序
+- **查任意 IP**：任意 IPv4 / IPv6 出完整画像（含地图链接与黑名单检测）；**批量查 / 清单模式**：最多 20 条，裸 IP 或 `IP:端口#地区 [类型]` 清单行都能粘，逐条出画像并按纯净度从高到低排好
 - **多源交叉验证**：主出口同时查 ipwho.is 与 ipapi.is 两家库，国家 / 城市 / ASN / 时区逐项对照，不一致当场标出；IPv6 出口单独出画像
 - **Cloudflare 视角**：接入机房（colo)、CF 眼中的出口 IP、TLS / HTTP 版本、WARP 状态——看你的线路实际从哪个机房出去
-- **黑名单检测**：出口与被查 IP 都过一遍 Spamhaus ZEN / SORBS / Barracuda 三个公开黑名单库（经 DNS 查询），列入了会明确标出
+- **黑名单检测**：出口与被查 IP 都过一遍 Spamhaus ZEN / SORBS / Barracuda 三个公开黑名单库（经 DNS 查询），列入了会明确标出；另经 Tor 官方 DNSEL 查是否 Tor 出口节点
 
 ### 🚀 连通性与 AI（学 TcpTest 的延迟表 + One IP 的 AI 状态聚合）
 
-- **站点延迟**：百度、淘宝、哔哩哔哩、知乎、Google、YouTube、GitHub、Cloudflare、X、维基百科，从你的浏览器实测——测的是你这台设备、这条线路的真实体感；国内 / 国际分组展示并给出组平均延迟
-- **AI 服务可达性**：ChatGPT、Claude、Gemini、Grok、DeepSeek、Kimi 逐个探活，并标注服务方所在地
+- **站点延迟**：国内 11 个（百度、淘宝、哔哩哔哩、知乎、微信、微博、抖音、京东、拼多多、小红书、支付宝）+ 国际 14 个（Google、YouTube、GitHub、Cloudflare、X、维基百科、Facebook、Instagram、Netflix、TikTok、Reddit、Telegram、Discord、Steam），从你的浏览器实测——测的是你这台设备、这条线路的真实体感；分组展示并给出组平均延迟，另测 WebSocket 是否可用
+- **AI 服务可达性**：国际 8 家（ChatGPT、Claude、Gemini、Grok、Copilot、Perplexity、Meta AI、Mistral）+ 国内 9 家（DeepSeek、Kimi、豆包、通义千问、文心一言、智谱清言、腾讯元宝、海螺AI、讯飞星火）分组探活，每组给出可达计数
 
 ### 🕵️ 泄露与指纹（学 IPCheck.ing 的泄露检测 + Whoer 的逐项扣分）
 
 - **WebRTC 检测**：暴露的公网 / 内网 IP 都列出，并与出口 IP 比对判定是否泄露
 - **DNS 出口检测**：实际解析你的 DNS 出口与归属，国家与 IP 归属不一致即提示泄露风险
-- **环境一致性评分**：时区、语言地区、WebRTC、DNS 四项与 IP 归属逐项核对，不一致逐项扣分并写明原因（满分 100）；UA 解析（浏览器 / 系统友好名）、屏幕、CPU、内存、GPU 明细，外加 Canvas 指纹与音频指纹哈希，一屏看全
+- **代理头检测**：让回显服务把你请求里被代理链加上去的头（X-Forwarded-For / Via / X-Real-IP）亮出来——透传了多余 IP 就是在告诉服务器你的真实地址或代理层级
+- **环境一致性评分**：时区、语言地区、WebRTC、DNS 四项与 IP 归属逐项核对，不一致逐项扣分并写明原因（满分 100）；UA 解析（浏览器 / 系统友好名）、屏幕、CPU、内存、GPU 明细，外加 Canvas 指纹与音频指纹哈希、系统时钟与服务器时间的偏差，一屏看全
 
 ### 🧰 工具箱（学 IPCheck.ing 的测速 + TcpTest 的解析查询）
 
-- **带宽测速**：经 Cloudflare 边缘节点分段下载测下行速度（约消耗 40 MB 流量），结果带口径说明
+- **带宽测速**：经 Cloudflare 边缘节点测延迟 / 抖动 / 下载 / 上传四件套（约消耗 45 MB 流量），结果带口径说明
 - **域名解析查询**：输入域名一次查 A / AAAA / CNAME / MX / NS / TXT 全部记录（经 Google DoH）
 
 ### 🗂 历史与导出（学 MyIP 的本地历史）
@@ -137,7 +140,7 @@
 | 50–70 | 稍高风险 | 只作临时 / 备用 |
 | >70 | 极度风险 | 建议直接放弃 |
 
-**数据源**：归属 / ASN / 时区 / 经纬度 — ipwho.is（主）+ ipapi.is（交叉验证，失败自动切 freeipapi）；风险值 / 代理判定 — proxycheck.io；DNS 出口 — edns.ip-api.com；IPv4 / IPv6 探测 — ipify；黑名单与域名解析 — dns.google（DoH）+ Spamhaus / SORBS / Barracuda 名单域；带宽测速 — speed.cloudflare.com；CF 视角 — cloudflare.com/cdn-cgi/trace；地图 — OpenStreetMap。
+**数据源**：归属 / ASN / 时区 / 经纬度 — ipwho.is（主）+ ipapi.is（交叉验证，失败自动切 freeipapi）；风险值 / 代理判定 — proxycheck.io；DNS 出口 — edns.ip-api.com；IPv4 / IPv6 探测 — ipify；黑名单与域名解析 — dns.google（DoH）+ Spamhaus / SORBS / Barracuda 名单域；Tor 检测 — Tor 官方 DNSEL（经 DoH）；国内库定位 — 百度 opendata；国内服务回显 — 搜狐 cityjson；代理头回显 — httpbin.org；带宽测速 — speed.cloudflare.com；CF 视角 — cloudflare.com/cdn-cgi/trace；地图 — OpenStreetMap。
 
 > 各家的风险分是各自数据库 + 各自模型的结果，**不同站点的分数不能横向直接比较**；同一 IP 在本站与 ping0、IPSuper 之间差个十几分很正常，看分档、看标签，比盯着个位数更有用。
 
@@ -195,13 +198,14 @@ A：不会。历史只写在你当前浏览器的 localStorage 里，换浏览�
 **已知边界（纯前端做不到，先说清）**
 
 - 真·多地 Ping / MTR 需要服务器探针网络，纯静态页面无解，需要时请用 TcpTest
+- TLS 指纹（JA3 / JA4）暂缺：免费数据源均不开放跨域读取，纯前端拿不到；流媒体解锁判定同理（需内容接口， favicon 探活只能测可达、不能测解锁）
 - 服务端带宽测速需要测速节点，本站只测延迟与可达性
 - 风险分依赖第三方免费库，库不可用时自动降级为启发式推测并注明来源
 
 **路线图**
 
 - [x] 多源交叉验证（第二数据源对照 + 黑名单检测，v1.3 已上线）
-- [ ] 优选 IP 清单模式：粘贴 `IP:端口#地区` 清单，逐条出画像
+- [x] 优选 IP 清单模式：粘贴 `IP:端口#地区` 清单，逐条出画像（v1.4 已上线）
 - [ ] 结果卡片图导出（把体检结果生成一张可分享的图片）
 - [ ] 深浅色主题切换
 
@@ -211,6 +215,7 @@ A：不会。历史只写在你当前浏览器的 localStorage 里，换浏览�
 
 - **v1.3.3（2026-11-06）**：机房关键词再补 ACEVILLE、VPS、Serverius、Datapacket 等代理主机商（用户实测节点轮换中遇到的）
 - **v1.3.2（2026-11-06）**：WebRTC 新增 TUN/运营商级 NAT 虚拟地址识别（198.18.0.0/15、100.64.0.0/10 不再误报泄露）；DNS 检测改为异步回填，不再阻塞指纹一致性评分
+- **v1.4（2026-11-06）**：AI 检测扩到 17 家（国际 8 + 国内 9 分组）；常用网站测速扩到 25 个（国内 11 + 国际 14）并加 WebSocket 检测；新增双视角出口（百度国内库 + 搜狐回显判分流）、代理头泄露检测、Tor 出口检测、系统时钟偏差；批量查升级为优选清单模式（≤20 条、解析端口/地区标注、按纯净度排序）；测速补延迟/抖动/上传
 - **v1.3.1（2026-11-06）**：修三处实测发现的问题：WebRTC 候选解析误报泄露、DNS 国家判定拿代码比名字误报不一致、机房关键词补 Sakura 等厂商；多源交叉在 ipapi.is 不可用时自动切 freeipapi
 - **v1.3（2026-11-06）**：新增 Cloudflare 视角、多源交叉验证、黑名单检测、带宽测速、域名解析查询、IPv6 出口画像；连通性分组平均；指纹补 Canvas / 音频哈希与 UA 解析；风控查询加重试，风险库不可用时查 IP / 批量查也给推测分
 - **v1.2（2026-11-06）**：部署教程改为图文并存（三步示意图）；预览图补移动端版；全部图片迁入 `docs/` 并走 jsdelivr；删减冗余表述
