@@ -205,7 +205,7 @@ ul.check{padding-left:20px;margin:6px 0}
 </div>
 
 <footer>
-  数据源：ipwho.is（归属/ASN）、proxycheck.io（风险/代理判定）、edns.ip-api.com（DNS 出口）、OpenStreetMap（地图），均为公开免费接口。<br>
+  数据源：ipwho.is（归属/ASN）、ipapi.is / freeipapi（交叉验证）、proxycheck.io（风险/代理判定）、edns.ip-api.com（DNS 出口）、dns.google（黑名单/解析）、speed.cloudflare.com（测速）、OpenStreetMap（地图），均为公开免费接口。<br>
   说明：各家的风险分口径不同、不能横向直接比，本站分数是多源综合估算，只作参考；重要结论建议再用
   <a href="https://ping0.cc" target="_blank" rel="noopener">ping0.cc</a>、
   <a href="https://ipsuper.com" target="_blank" rel="noopener">ipsuper.com</a>、
@@ -245,7 +245,7 @@ async function detectExit(){
 }
 
 /* ---------- IP 信息 + 风险 ---------- */
-const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7'];
+const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7','sakura','edis','huawei','ucloud','kamatera','racknerd','hostwinds','quadranet','psychz','colocrossing','frantech','upcloud','scaleway','netcup','ionos','aeza','servinga','myloc'];
 function guessType(info, risk){
   const s = ((info&&((info.connection&&info.connection.isp)||''))+' '+((info&&info.org)||'')).toLowerCase();
   if(risk && risk.type) return risk.type; // VPN / Proxy / Residential 等（proxycheck 口径）
@@ -410,22 +410,26 @@ async function runAI(){
 function runRTC(){
   return new Promise(resolve=>{
     const pubs = new Set(), locals = new Set();
-    let pc;
+    let pc, mdns = false;
     try{ pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]}); }
     catch(e){ $('rtcJudge').innerHTML='<span class="fail">浏览器不支持 WebRTC</span>'; return resolve(); }
     pc.createDataChannel('x');
     pc.onicecandidate = ev=>{
       if(!ev.candidate){ finish(); return; }
-      const m = /([0-9a-fA-F:.]+)\s\d+\s/.exec(ev.candidate.candidate+' ');
-      if(!m) return;
-      const ip = m[1];
-      if(/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|fd|fe80|::1)/.test(ip) || ip.includes('.local')) locals.add(ip);
-      else pubs.add(ip);
+      const parts = (ev.candidate.candidate || '').split(' ');
+      const addr = parts[4] || '';
+      if(!addr) return;
+      if(addr.endsWith('.local')){ mdns = true; return; }
+      const isV4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(addr);
+      const isV6 = addr.includes(':') && /^[0-9a-fA-F:]+$/.test(addr);
+      if(!isV4 && !isV6) return;
+      if(/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|fd|fe80|::1)/i.test(addr)) locals.add(addr);
+      else pubs.add(addr);
     };
     function finish(){
       state.rtcPublic = [...pubs]; state.rtcLocal = [...locals];
       $('rtcIp').textContent = state.rtcPublic.length ? state.rtcPublic.join('，') : '未暴露（好）';
-      $('rtcLocal').textContent = state.rtcLocal.length ? state.rtcLocal.join('，') : '未暴露';
+      $('rtcLocal').textContent = state.rtcLocal.length ? state.rtcLocal.join('，') : (mdns ? '未暴露（mDNS 已隐藏）' : '未暴露');
       const exit = state.v4 || state.v6;
       if(state.rtcPublic.length && exit && !state.rtcPublic.includes(exit))
         $('rtcJudge').innerHTML = '<span class="fail">⚠️ 与出口 IP 不一致，可能泄露真实 IP</span>';
@@ -448,9 +452,9 @@ async function runDNS(){
     state.dns = dns;
     $('dnsIp').textContent = dns.ip || '–';
     $('dnsGeo').textContent = (dns.geo || '–');
-    const ipCountry = state.info ? state.info.country_code : null;
-    const dnsCountry = (dns.geo||'').slice(0,2);
-    if(ipCountry && dnsCountry && ipCountry !== dnsCountry)
+    const ipCountry = state.info ? (state.info.country || '') : null;
+    const dnsCountry = (dns.geo||'').split(' - ')[0].trim();
+    if(ipCountry && dnsCountry && ipCountry.toLowerCase() !== dnsCountry.toLowerCase())
       $('dnsJudge').innerHTML = '<span class="warn" style="color:var(--warn)">⚠️ DNS 出口国家与 IP 归属不一致，可能存在 DNS 泄露</span>';
     else $('dnsJudge').innerHTML = '<span class="ok">✓ 未见明显泄露</span>';
   }catch(e){
@@ -478,9 +482,10 @@ function runFP(){
   const exit = state.v4 || state.v6;
   if(state.rtcPublic.length && exit && !state.rtcPublic.includes(exit)){ items.push(['✗ WebRTC 暴露了与出口不同的 IP（扣 30）', -30]); score -= 30; }
   else items.push(['✓ WebRTC 未泄露其他公网 IP', 0]);
-  if(state.dns && ipCc){
-    const dc = (state.dns.geo||'').slice(0,2);
-    if(dc && dc !== ipCc){ items.push(['✗ DNS 出口国家与 IP 归属不一致（扣 20）', -20]); score -= 20; }
+  if(state.dns && state.info){
+    const dc = (state.dns.geo||'').split(' - ')[0].trim().toLowerCase();
+    const ic = (state.info.country || '').toLowerCase();
+    if(dc && ic && dc !== ic){ items.push(['✗ DNS 出口国家与 IP 归属不一致（扣 20）', -20]); score -= 20; }
     else items.push(['✓ DNS 出口与 IP 归属一致', 0]);
   }
   $('fpScore').textContent = Math.max(0, score);
@@ -558,8 +563,14 @@ async function checkDNSBL(ip){
 }
 async function runCross(){
   const ip = state.v4 || state.v6; if(!ip) return;
-  let alt = null;
-  try{ alt = await getJson('https://api.ipapi.is/?q='+encodeURIComponent(ip), 9000); }catch(e){}
+  let alt = null, altName = 'ipapi.is';
+  try{ const r = await getJson('https://api.ipapi.is/?q='+encodeURIComponent(ip), 9000); if(r && r.country) alt = r; }catch(e){}
+  if(!alt){
+    try{
+      const f = await getJson('https://free.freeipapi.com/api/json/'+encodeURIComponent(ip), 9000);
+      if(f && f.countryName){ alt = { country: f.countryName, city: f.cityName || '', asn: (f.asn ? ('AS'+f.asn+' ') : '') + (f.asnOrganization || ''), timezone: (f.timeZones && f.timeZones[0]) || '' }; altName = 'freeipapi'; }
+    }catch(e){}
+  }
   const a = state.info || {}; const ac = a.connection || {};
   if(alt && !alt.error && alt.country){
     const cmp = (v1, v2)=> (v1 && v2) ? (String(v1).toLowerCase()===String(v2).toLowerCase() ? ' ✓ 一致' : ' ⚠️ 不一致') : '';
@@ -569,7 +580,7 @@ async function runCross(){
       ['ASN', ac.asn?('AS'+ac.asn):'–', alt.asn||'–', (ac.asn && alt.asn && String(alt.asn).includes(String(ac.asn))) ? ' ✓ 一致' : ''],
       ['时区', a.timezone?(a.timezone.id||''):'–', alt.timezone||'–', cmp(a.timezone?(a.timezone.id||''):''  , alt.timezone)]
     ];
-    $('crossTable').innerHTML = '<table><tr><th>项目</th><th>ipwho.is</th><th>ipapi.is</th><th></th></tr>'
+    $('crossTable').innerHTML = '<table><tr><th>项目</th><th>ipwho.is</th><th>'+altName+'</th><th></th></tr>'
       + rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('') + '</table>'
       + '<div class="small muted" style="margin-top:6px">两家数据库对同一 IP 的定位经常差一个城市，属正常现象；差到国家级才需要警惕。</div>';
   } else $('crossTable').innerHTML = '<span class="muted small">第二数据源暂不可用</span>';

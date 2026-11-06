@@ -137,7 +137,7 @@
 | 50–70 | 稍高风险 | 只作临时 / 备用 |
 | >70 | 极度风险 | 建议直接放弃 |
 
-**数据源**：归属 / ASN / 时区 / 经纬度 — ipwho.is（主）+ ipapi.is（交叉验证）；风险值 / 代理判定 — proxycheck.io；DNS 出口 — edns.ip-api.com；IPv4 / IPv6 探测 — ipify；黑名单与域名解析 — dns.google（DoH）+ Spamhaus / SORBS / Barracuda 名单域；带宽测速 — speed.cloudflare.com；CF 视角 — cloudflare.com/cdn-cgi/trace；地图 — OpenStreetMap。
+**数据源**：归属 / ASN / 时区 / 经纬度 — ipwho.is（主）+ ipapi.is（交叉验证，失败自动切 freeipapi）；风险值 / 代理判定 — proxycheck.io；DNS 出口 — edns.ip-api.com；IPv4 / IPv6 探测 — ipify；黑名单与域名解析 — dns.google（DoH）+ Spamhaus / SORBS / Barracuda 名单域；带宽测速 — speed.cloudflare.com；CF 视角 — cloudflare.com/cdn-cgi/trace；地图 — OpenStreetMap。
 
 > 各家的风险分是各自数据库 + 各自模型的结果，**不同站点的分数不能横向直接比较**；同一 IP 在本站与 ping0、IPSuper 之间差个十几分很正常，看分档、看标签，比盯着个位数更有用。
 
@@ -209,6 +209,7 @@ A：不会。历史只写在你当前浏览器的 localStorage 里，换浏览�
 
 ## 📜 版本历史
 
+- **v1.3.1（2026-11-06）**：修三处实测发现的问题：WebRTC 候选解析误报泄露、DNS 国家判定拿代码比名字误报不一致、机房关键词补 Sakura 等厂商；多源交叉在 ipapi.is 不可用时自动切 freeipapi
 - **v1.3（2026-11-06）**：新增 Cloudflare 视角、多源交叉验证、黑名单检测、带宽测速、域名解析查询、IPv6 出口画像；连通性分组平均；指纹补 Canvas / 音频哈希与 UA 解析；风控查询加重试，风险库不可用时查 IP / 批量查也给推测分
 - **v1.2（2026-11-06）**：部署教程改为图文并存（三步示意图）；预览图补移动端版；全部图片迁入 `docs/` 并走 jsdelivr；删减冗余表述
 - **v1.1（2026-11-06）**：新增批量查 IP、导出检测报告；补全 README 与效果预览图
