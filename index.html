@@ -243,6 +243,14 @@ async function siteGeo(domain){
     if(ip){
       const g = await getJson('https://ipwho.is/' + encodeURIComponent(ip), 7000);
       if(g && g.success !== false && g.country) out = (g.flag ? g.flag.emoji + ' ' : '') + g.country + (g.city ? ' · ' + g.city : '');
+      else{
+        const f = await getJson('https://free.freeipapi.com/api/json/' + encodeURIComponent(ip), 7000).catch(()=>null);
+        if(f && f.countryName){
+          const cc = (f.countryCode || '').toUpperCase();
+          const em = cc.length === 2 ? String.fromCodePoint(...[...cc].map(c=>127397 + c.charCodeAt(0))) + ' ' : '';
+          out = em + f.countryName + (f.cityName ? ' · ' + f.cityName : '');
+        }
+      }
     }
   }catch(e){}
   _siteGeoCache[domain] = out;
@@ -279,7 +287,7 @@ async function detectExit(){
 }
 
 /* ---------- IP 信息 + 风险 ---------- */
-const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7','sakura','edis','huawei','ucloud','kamatera','racknerd','hostwinds','quadranet','psychz','colocrossing','frantech','upcloud','scaleway','netcup','ionos','aeza','servinga','myloc','aceville','vps','serverius','datapacket','worldstream','fdcservers','hostinger','alexhost','bluevps','glesys','altushost','colocation','dedicated'];
+const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7','sakura','edis','huawei','ucloud','kamatera','racknerd','hostwinds','quadranet','psychz','colocrossing','frantech','upcloud','scaleway','netcup','ionos','aeza','servinga','myloc','aceville','vps','serverius','datapacket','worldstream','fdcservers','hostinger','alexhost','bluevps','glesys','altushost','colocation','dedicated','private customer'];
 function guessType(info, risk){
   const s = ((info&&((info.connection&&info.connection.isp)||''))+' '+((info&&info.org)||'')).toLowerCase();
   if(risk && risk.type) return risk.type; // VPN / Proxy / Residential 等（proxycheck 口径）
@@ -397,11 +405,14 @@ async function queryBatch(){
     let rv = risk && typeof risk.risk === 'number' ? risk.risk : null;
     let est = false;
     if(rv === null){ rv = estRisk(info, risk); est = true; }
-    rows.push({e, geo:(info.flag?info.flag.emoji+' ':'') + info.country + ' ' + info.city, type:guessType(info, risk), rv, est});
+    const REG = {JP:'Japan',US:'United States',HK:'Hong Kong',SG:'Singapore',KR:'South Korea',TW:'Taiwan',CN:'China',UK:'United Kingdom',GB:'United Kingdom',DE:'Germany',AU:'Australia',CA:'Canada',FR:'France',IN:'India',RU:'Russia',NL:'Netherlands'};
+    const codeM = (e.label || '').toUpperCase().match(/^[A-Z]{2}/);
+    const mismatch = !!(codeM && REG[codeM[0]] && REG[codeM[0]] !== info.country);
+    rows.push({e, geo:(info.flag?info.flag.emoji+' ':'') + info.country + ' ' + info.city, type:guessType(info, risk), rv, est, mismatch});
   }
   rows.sort((a,b)=> ((b.rv===null?-1:100-b.rv) - (a.rv===null?-1:100-a.rv)));
   $('batchResult').innerHTML = '<table><tr><th>IP</th><th>端口</th><th>标注</th><th>实测归属</th><th>类型</th><th class="ms">风控值</th><th class="ms">纯净度</th></tr>'
-    + rows.map(r=>'<tr><td>'+r.e.ip+'</td><td>'+r.e.port+'</td><td>'+(r.e.label||'–')+'</td><td>'+r.geo+'</td><td>'+r.type+'</td><td class="ms">'+(r.rv===null?'–':r.rv+(r.est?'*':''))+'</td><td class="ms">'+(r.rv===null?'–':(100-r.rv)+(r.est?'*':''))+'</td></tr>').join('') + '</table>'
+    + rows.map(r=>'<tr><td>'+r.e.ip+'</td><td>'+r.e.port+'</td><td>'+(r.e.label||'–')+(r.mismatch?' <span class="warn" title="标注地区与实测归属不一致">⚠️</span>':'')+'</td><td>'+r.geo+'</td><td>'+r.type+'</td><td class="ms">'+(r.rv===null?'–':r.rv+(r.est?'*':''))+'</td><td class="ms">'+(r.rv===null?'–':(100-r.rv)+(r.est?'*':''))+'</td></tr>').join('') + '</table>'
     + '<div class="small muted" style="margin-top:6px">已按纯净度从高到低排序，排前面的是优先选。带 * 的是风险库不可用时的本地推测分。</div>';
 }
 function exportReport(){
@@ -714,7 +725,13 @@ async function runCross(){
   if(state.v6){
     try{
       const g = await getJson('https://ipwho.is/'+encodeURIComponent(state.v6), 9000);
-      if(g && g.success!==false) $('v6Profile').innerHTML = 'IPv6 出口画像：'+(g.flag?g.flag.emoji+' ':'')+g.country+' · '+g.city+' · '+((g.connection&&g.connection.isp)||'')+'（AS'+((g.connection&&g.connection.asn)||'')+'）';
+      if(g && g.success!==false){
+        let t6 = 'IPv6 出口画像：'+(g.flag?g.flag.emoji+' ':'')+g.country+' · '+g.city+' · '+((g.connection&&g.connection.isp)||'')+'（AS'+((g.connection&&g.connection.asn)||'')+'）';
+        const b6 = await getJson('https://ipapi.is/json/?q='+encodeURIComponent(state.v6), 8000).catch(()=>null);
+        const loc6 = b6 && (b6.location || b6);
+        if(loc6 && loc6.country && loc6.country !== g.country) t6 += '｜第二源（ipapi.is）：'+loc6.country+' · '+(loc6.city||'')+'（两源不一致）';
+        $('v6Profile').innerHTML = t6;
+      }
     }catch(e){}
   }
   Promise.all([checkDNSBL(ip), checkTor(ip)]).then(([t, tor])=>{
