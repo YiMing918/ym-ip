@@ -262,7 +262,7 @@ ul.check{padding-left:20px;margin:6px 0}
   <a href="https://ping0.cc" target="_blank" rel="noopener">ping0.cc</a>、
   <a href="https://ipsuper.com" target="_blank" rel="noopener">ipsuper.com</a>、
   <a href="https://scamalytics.com/ip" target="_blank" rel="noopener">Scamalytics</a> 交叉复核。<br>
-  我的 IP 监测站 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
+  我的 IP 监测站 v1.5.1 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
 </footer>
 </div>
 
@@ -772,7 +772,7 @@ async function runCross(){
       const g = await getJson('https://ipwho.is/'+encodeURIComponent(state.v6), 9000);
       if(g && g.success!==false){
         let t6 = 'IPv6 出口画像：'+(g.flag?g.flag.emoji+' ':'')+esc(g.country)+' · '+esc(g.city)+' · '+esc((g.connection&&g.connection.isp)||'')+'（AS'+esc((g.connection&&g.connection.asn)||'')+'）';
-        const b6 = await getJson('https://ipapi.is/json/?q='+encodeURIComponent(state.v6), 8000).catch(()=>null);
+        const b6 = await getJson('https://api.ipapi.is/?q='+encodeURIComponent(state.v6), 8000).catch(()=>null);
         const loc6 = b6 && (b6.location || b6);
         if(loc6 && loc6.country && loc6.country !== g.country) t6 += '｜第二源（ipapi.is）：'+esc(loc6.country)+' · '+esc(loc6.city||'')+'（两源不一致）';
         $('v6Profile').innerHTML = t6;
