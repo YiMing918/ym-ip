@@ -334,7 +334,7 @@ async function detectExit(){
 /* ---------- IP 信息 + 风险 ---------- */
 const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7','sakura','edis','huawei','ucloud','kamatera','racknerd','hostwinds','quadranet','psychz','colocrossing','frantech','upcloud','scaleway','netcup','ionos','aeza','servinga','myloc','aceville','vps','serverius','datapacket','worldstream','fdcservers','hostinger','alexhost','bluevps','glesys','altushost','colocation','dedicated','private customer'];
 function guessType(info, risk){
-  const s = ((info&&((info.connection&&info.connection.isp)||''))+' '+((info&&info.org)||'')).toLowerCase();
+  const s = ((info&&((info.connection&&info.connection.isp)||''))+' '+((info&&((info.connection&&info.connection.org)||''))||'')).toLowerCase();
   if(risk && risk.type) return risk.type; // VPN / Proxy / Residential 等（proxycheck 口径）
   if(DC_WORDS.some(w=>s.includes(w))) return '机房/数据中心（推测）';
   return '住宅/运营商（推测）';
@@ -747,7 +747,16 @@ async function checkDNSBL(ip){
 async function runCross(){
   const ip = state.v4 || state.v6; if(!ip) return;
   let alt = null, altName = 'ipapi.is';
-  try{ const r = await getJson('https://api.ipapi.is/?q='+encodeURIComponent(ip), 9000); if(r && r.country) alt = r; }catch(e){}
+  try{
+    const r = await getJson('https://api.ipapi.is/?q='+encodeURIComponent(ip), 9000);
+    const loc = r && (r.location || r);
+    if(loc && loc.country){
+      const aObj = r.asn && typeof r.asn === 'object' ? r.asn : null;
+      alt = { country: loc.country, city: loc.city || '',
+        asn: aObj ? ((aObj.asn ? 'AS'+aObj.asn : '') + (aObj.org ? ' '+aObj.org : '')) : (r.asn || ''),
+        timezone: loc.timezone || '' };
+    }
+  }catch(e){}
   if(!alt){
     try{
       const f = await getJson('https://free.freeipapi.com/api/json/'+encodeURIComponent(ip), 9000);
