@@ -262,7 +262,7 @@ ul.check{padding-left:20px;margin:6px 0}
   <a href="https://ping0.cc" target="_blank" rel="noopener">ping0.cc</a>、
   <a href="https://ipsuper.com" target="_blank" rel="noopener">ipsuper.com</a>、
   <a href="https://scamalytics.com/ip" target="_blank" rel="noopener">Scamalytics</a> 交叉复核。<br>
-  我的 IP 监测站 v1.6.0 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
+  我的 IP 监测站 v1.6.1 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
 </footer>
 </div>
 
@@ -330,12 +330,18 @@ async function fillSiteGeo(list, prefix){
   await Promise.all(workers);
 }
 
+// 风险记录是否带数据库标记（is_vpn 等布尔字段）。api.ipapi.is 的
+// 标记字段只在带密钥的响应里才有；无密钥免费档只回组织/ASN 名称
+function hasFlags(r){
+  return !!r && ['is_vpn', 'is_proxy', 'is_tor', 'is_datacenter', 'is_abuser'].some(k => typeof r[k] === 'boolean');
+}
 async function fetchRisk(ip){
   // 原先用 proxycheck.io：它不返回跨域（CORS）头，浏览器里永远读不到
   // 响应（除非注册 Key 并在它后台给域名开白名单），分数实际上一直是
-  // 本地推测。改用原生支持 CORS 的 api.ipapi.is——它直接给数据库标记
-  // （is_vpn / is_proxy / is_tor / is_datacenter / is_abuser 等），
-  // 本站按下面 riskFromFlags 的公开公式折算成风控值。
+  // 本地推测。改查 api.ipapi.is（原生支持 CORS）：带密钥的响应会给
+  // 数据库标记（is_vpn / is_proxy / is_tor / is_datacenter / is_abuser），
+  // 按 riskFromFlags 折算；无密钥免费档只有组织/ASN 名，就用它和
+  // ipwho 的组织名一起做关键词推测（guessType），并如实标注为推测。
   try{
     const r = await getJson('https://api.ipapi.is/?q='+encodeURIComponent(ip), 9000);
     if(!r || r.bogon || (!r.location && !r.company && !r.asn)) return null;
@@ -378,23 +384,37 @@ async function detectExit(){
 
 /* ---------- IP 信息 + 风险 ---------- */
 const DC_WORDS = ['cloudflare','amazon','aws','google','microsoft','azure','oracle','alibaba','aliyun','tencent','digitalocean','vultr','linode','akamai','ovh','hetzner','datacenter','hosting','server','cloud','idc','choopa','leaseweb','m247','gcore','contabo','bandwagon','it7','sakura','edis','huawei','ucloud','kamatera','racknerd','hostwinds','quadranet','psychz','colocrossing','frantech','upcloud','scaleway','netcup','ionos','aeza','servinga','myloc','aceville','vps','serverius','datapacket','worldstream','fdcservers','hostinger','alexhost','bluevps','glesys','altushost','colocation','dedicated','private customer'];
-// IP 类型统一成中文口径：风险库（ipapi.is）的标记优先，其次按
-// ipwho 的 ISP/组织名关键词推测。旧版把英文 type 原样返回，下游却
-// 只认中文（includes('机房')），英文机房类型会被算成住宅档低分
+// IP 类型统一成中文口径：风险记录带数据库标记时按标记判；否则把
+// ipwho 与 ipapi.is 两家的组织/ASN 名拼起来做关键词推测。旧版把
+// 英文 type 原样返回，下游却只认中文（includes('机房')），英文
+// 机房类型会被算成住宅档低分
 function guessType(info, risk){
-  if(risk){
+  if(hasFlags(risk)){
     if(risk.is_tor) return '代理/Tor 出口';
     if(risk.is_vpn) return '代理/VPN';
     if(risk.is_proxy) return '代理/Proxy';
     if(risk.is_datacenter) return '机房/数据中心';
-    const ct = ((risk.company && risk.company.type) || '').toLowerCase();
+    const ct = ((risk.company && typeof risk.company === 'object' && risk.company.type) || '').toLowerCase();
     if(ct === 'hosting') return '机房/数据中心';
     if(risk.is_mobile) return '住宅/移动网络';
     if(ct === 'business') return '商业宽带';
   }
-  const s = ((info&&((info.connection&&info.connection.isp)||''))+' '+((info&&((info.connection&&info.connection.org)||''))||'')).toLowerCase();
+  if(risk && risk.company && typeof risk.company === 'object'){
+    const ct = (risk.company.type || '').toLowerCase();
+    if(ct === 'hosting') return '机房/数据中心';
+    if(ct === 'business') return '商业宽带';
+  }
+  const parts = [];
+  if(info && info.connection){ parts.push(info.connection.isp || '', info.connection.org || ''); }
+  if(risk){
+    if(typeof risk.company === 'string') parts.push(risk.company);
+    else if(risk.company) parts.push(risk.company.org || risk.company.name || '');
+    if(typeof risk.asn === 'string') parts.push(risk.asn);
+    else if(risk.asn) parts.push(risk.asn.org || '');
+  }
+  const s = parts.join(' ').toLowerCase();
   if(DC_WORDS.some(w=>s.includes(w))) return '机房/数据中心（推测）';
-  if(info) return '住宅/运营商（推测）';
+  if(info || risk) return '住宅/运营商（推测）';
   return '未知（数据不足）';
 }
 async function loadInfo(ip){
@@ -432,10 +452,10 @@ function bandOf(risk){
 }
 function renderScore(ip){
   let risk = null, src = '';
-  if(state.risk){ risk = riskFromFlags(state.risk); src = 'ipapi.is 风险标记 + 本站公式折算'; }
-  else if(state.info){
-    const t = guessType(state.info, null);
-    risk = t.includes('机房') ? 55 : 18; src = '本地启发式推测（风险库不可用）';
+  if(hasFlags(state.risk)){ risk = riskFromFlags(state.risk); src = 'ipapi.is 风险标记 + 本站公式折算'; }
+  else if(state.info || state.risk){
+    const t = guessType(state.info, state.risk);
+    risk = t.includes('机房') ? 55 : 18; src = '本地启发式推测（双源组织名关键词）';
   }
   if(risk === null){
     // 归属与风险数据全没拿到：如实显示无法评分。旧版会一路默认到
@@ -460,13 +480,18 @@ function renderScore(ip){
   ring.style.stroke = color;
   ring.style.strokeDashoffset = (351.8 * (1 - purity/100)).toFixed(1);
   const type = guessType(state.info, state.risk);
-  const flagged = state.risk ? (state.risk.is_vpn || state.risk.is_proxy || state.risk.is_tor) : null;
-  const flagTxt = state.risk && state.risk.is_tor ? '被标记为 Tor 出口' : '被标记为代理/VPN';
+  const hasF = hasFlags(state.risk);
+  const flagged = hasF ? (state.risk.is_vpn || state.risk.is_proxy || state.risk.is_tor) : null;
+  const flagTxt = hasF && state.risk.is_tor ? '被标记为 Tor 出口' : '被标记为代理/VPN';
   $('ipTypeTags').innerHTML =
     '<span class="tag '+(type.includes('机房')||type.includes('代理')?'warn':'good')+'">'+esc(type)+'</span>'
-    + (state.risk ? '<span class="tag '+(flagged?'bad':'good')+'">'+(flagged?flagTxt:'未标记代理')+'</span>' : '')
+    + (hasF ? '<span class="tag '+(flagged?'bad':'good')+'">'+(flagged?flagTxt:'未标记代理')+'</span>' : '')
     + (state.info ? '<span class="tag">'+esc(state.info.type)+'</span>' : '');
-  $('scoreNote').textContent = '纯净度 = 100 − 风控值（来源：'+src+'）。折算口径：基础 5 分，VPN +45 · 代理 +50 · Tor +60 · 滥用标记 +40 · 机房 +25 · 威胁标记 +30。分档：≤15 极度纯净 · 16–25 纯净 · 26–40 中性 · 41–50 轻微风险 · 51–70 稍高风险 · >70 极度风险。';
+  $('scoreNote').textContent = '纯净度 = 100 − 风控值（来源：'+src+'）。'
+    + (hasF
+      ? '折算口径：基础 5 分，VPN +45 · 代理 +50 · Tor +60 · 滥用标记 +40 · 机房 +25 · 威胁标记 +30。'
+      : '推测口径：按 ipwho.is 与 ipapi.is 两家的 ISP / 组织 / ASN 名称关键词判定，机房类 55、其他 18；这不是数据库实测分。')
+    + '分档：≤15 极度纯净 · 16–25 纯净 · 26–40 中性 · 41–50 轻微风险 · 51–70 稍高风险 · >70 极度风险。';
   if(window.syncMini) syncMini();
 }
 
@@ -480,7 +505,7 @@ async function queryIp(){
   risk = await fetchRisk(ip);
   if(!info || info.success===false){ $('qResult').innerHTML = '<span class="fail">查不到这个 IP，检查一下格式。</span>'; return; }
   const c = info.connection||{};
-  let rv = risk ? riskFromFlags(risk) : null;
+  let rv = hasFlags(risk) ? riskFromFlags(risk) : null;
   let est = false;
   if(rv===null){ rv = estRisk(info, risk); est = true; }
   const band = bandOf(rv);
@@ -541,7 +566,7 @@ async function queryBatch(){
       risk = await fetchRisk(e.ip);
       if(!info || info.success === false){ rows[i] = {e, geo:'查不到', type:'–', rv:null, est:false}; }
       else{
-        let rv = risk ? riskFromFlags(risk) : null;
+        let rv = hasFlags(risk) ? riskFromFlags(risk) : null;
         let est = false;
         if(rv === null){ rv = estRisk(info, risk); est = true; }
         const codeM = (e.label || '').toUpperCase().match(/^[A-Z]{2}/);
