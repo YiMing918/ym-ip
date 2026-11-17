@@ -57,6 +57,7 @@ jobs:
           _headers
           index.html
           PACKLIST
+          find stage -type f -exec touch -d '1980-01-01 00:00:00' {} +
           cd stage
           find . -type f | sed 's|^\./||' | LC_ALL=C sort | zip -q -X -D "../$ZIPNAME" -@
           cd ..
@@ -73,6 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release view "$TAG" > /dev/null
+          gh release delete-asset "$TAG" "ym-ip-SHA256SUMS.txt" -y || true
           gh release view "$TAG" --json assets --jq '.assets[].name' | grep -E '^ym-ip-deploy-[0-9]{8}\.zip$' | grep -vx "$ZIPNAME" | while read -r a; do echo "删除旧包：$a"; gh release delete-asset "$TAG" "$a" -y; done || true
           gh release upload "$TAG" "$ZIPNAME" SHA256SUMS.txt --clobber
           echo "已刷新到 Release $TAG：$ZIPNAME + SHA256SUMS.txt"
