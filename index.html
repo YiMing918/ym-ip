@@ -262,7 +262,7 @@ ul.check{padding-left:20px;margin:6px 0}
   <a href="https://ping0.cc" target="_blank" rel="noopener">ping0.cc</a>、
   <a href="https://ipsuper.com" target="_blank" rel="noopener">ipsuper.com</a>、
   <a href="https://scamalytics.com/ip" target="_blank" rel="noopener">Scamalytics</a> 交叉复核。<br>
-  我的 IP 监测站 v1.6.1 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
+  我的 IP 监测站 v1.6.2 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
 </footer>
 </div>
 
@@ -515,7 +515,10 @@ async function queryIp(){
     ['类型', guessType(info, risk)], ['经纬度', (typeof info.latitude==='number' && typeof info.longitude==='number') ? (info.latitude+', '+info.longitude) : '–']
   ].map(([k,v])=>'<div class="kv"><span>'+k+'</span><b>'+esc(v)+'</b></div>').join('')
   + '<div style="margin-top:6px">风控值 <b style="color:'+band[1]+'">'+rv+'</b> · '+band[0]+'（纯净度 '+(100-rv)+'）'+(est?' <span class="muted small">· 本地推测（风险库不可用，已自动降级）</span>':'')+'</div>'
-  + '<div class="small" style="margin-top:4px"><a href="https://www.openstreetmap.org/?mlat='+info.latitude+'&mlon='+info.longitude+'#map=11/'+info.latitude+'/'+info.longitude+'" target="_blank" rel="noopener">在地图上看这个位置 ↗</a></div>'
+  // 地图链接与 renderInfo 同口径：经纬度先验 typeof number 才拼——缺字段时
+  // 旧版会拼出 mlat=undefined 的坏链接（C-46）
+  + ((typeof info.latitude === 'number' && typeof info.longitude === 'number')
+    ? '<div class="small" style="margin-top:4px"><a href="https://www.openstreetmap.org/?mlat='+info.latitude+'&mlon='+info.longitude+'#map=11/'+info.latitude+'/'+info.longitude+'" target="_blank" rel="noopener">在地图上看这个位置 ↗</a></div>' : '')
   + '<div class="small muted" id="qDnsbl" style="margin-top:4px">黑名单检测中…</div>';
   Promise.all([checkDNSBL(ip), checkTor(ip)]).then(([t, tor])=>{ const el=$('qDnsbl'); if(el) el.textContent='黑名单：'+t+(tor?'｜Tor 出口：'+tor:''); });
 }
@@ -779,8 +782,8 @@ function runFP(){
   const items = []; let score = 100;
   const ipTz = state.info && state.info.timezone ? (state.info.timezone.id||'') : '';
   if(ipTz){
-    if(ipTz === tz) items.push(['✓ 浏览器时区与 IP 时区一致（'+tz+'）', 0]);
-    else { items.push(['✗ 时区不一致：浏览器 '+tz+' vs IP '+ipTz+'（扣 25）', -25]); score -= 25; }
+    if(ipTz === tz) items.push(['✓ 浏览器时区与 IP 时区一致（'+esc(tz)+'）', 0]);
+    else { items.push(['✗ 时区不一致：浏览器 '+esc(tz)+' vs IP '+esc(ipTz)+'（扣 25）', -25]); score -= 25; }
   }
   const ipCc = state.info ? state.info.country_code : '';
   // 语言地区取 Locale 的 region：zh-Hans-CN 这类标签按 '-' 切第二段
@@ -792,8 +795,8 @@ function runFP(){
     langRegion = seg.length ? seg[seg.length - 1].toUpperCase() : '';
   }
   if(ipCc && langRegion){
-    if(ipCc === langRegion) items.push(['✓ 浏览器语言地区与 IP 归属一致（'+lang+'）', 0]);
-    else { items.push(['△ 语言地区 '+langRegion+' 与 IP 归属 '+ipCc+' 不同（扣 10，人在国外用母语也常见）', -10]); score -= 10; }
+    if(ipCc === langRegion) items.push(['✓ 浏览器语言地区与 IP 归属一致（'+esc(lang)+'）', 0]);
+    else { items.push(['△ 语言地区 '+esc(langRegion)+' 与 IP 归属 '+esc(ipCc)+' 不同（扣 10，人在国外用母语也常见）', -10]); score -= 10; }
   }
   if(rtcExtras().length){ items.push(['✗ WebRTC 暴露了出口之外的公网 IP（扣 30）', -30]); score -= 30; }
   else items.push(['✓ WebRTC 未暴露出口之外的公网 IP', 0]);

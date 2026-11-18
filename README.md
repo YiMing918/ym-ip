@@ -4,7 +4,7 @@
 为自己折腾优选 IP / 节点而写：综合了 One IP、IPSuper、ping0、IPCheck.ing、TcpTest、Whoer 六家站点的长处，收进一个**纯静态单文件**，零后端、零成本。
 基于 **Cloudflare Pages** 部署（或本地直接打开），全部运行在免费额度内，无需服务器、无需数据库。
 
-![版本](https://img.shields.io/badge/版本-v1.6.1-blue) ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white) ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue) ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black) ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
+![版本](https://img.shields.io/badge/版本-v1.6.2-blue) ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white) ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue) ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black) ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
 
 **直达**：[⬇️ 下载最新版](https://github.com/YiMing918/ym-ip/releases/latest) · [📖 博客教程](https://bk.ymaym.top/post/ym-ip-guide)
 
@@ -542,6 +542,7 @@ A：不会。历史只写在你当前浏览器的 localStorage（浏览器本地
 ## 📜 版本历史
 
 - **文档升级（2026-11-14）**：README 按新手向全套规格重写——新增直达链接、功能一览、先选下载文件、新手先看这里（含「先分清两个地方」）、部署总览与方式对比、三种部署方式的手把手步骤、探活 / 保活 / 自动更新章节。功能与代码不变，仍为 v1.6.1
+- **v1.6.2（2026-11-18）**：对抗式复读修复三项。①**补上内容安全策略（CSP）**：`_headers` 以前只有两个安全头、没有 CSP，现按本站实际外源逐项放行补齐（口径与 ym-cfip 同款，另放行百度/搜狐两个定位 JSONP、OpenStreetMap 地图框架、WebSocket 检测与各站图标探测，现功能一个不掐）。②**指纹卡转义补齐**：IP 时区与国家码是第三方接口回来的数据，以前没转义就拼进页面，现与全站同口径过 `esc()`。③**任意 IP 查询的地图链接先验数字**：经纬度缺失时以前会拼出带着 undefined 的坏链接，现与详情卡同口径、是数字才给链接。定向测试 13 项（改前全失败、改后全过）。
 - **v1.6.1（2026-11-13）**：修正 v1.6.0 对 api.ipapi.is 免费档返回字段的假设——实测无密钥响应只有组织/ASN 名称、没有 is_* 风险标记（标记是密钥版字段）。改为：有标记时才走公式折算；无标记时用 ipwho + ipapi.is 双源组织名关键词推测并如实标注，不再人人都是「纯净度 95」
 - **v1.6.0（2026-11-13）**：三方代码审查后的集中修复。① 风控数据源换血：proxycheck.io 不返回跨域头、浏览器里永远读不到（分数实际一直是本地推测），弃用；风险改查 api.ipapi.is 并统一类型判定为中文口径（英文机房类型不再被算成住宅低分）；归属与风险全无时显示「无法评分」，不再默认「住宅、纯净度 82」。② 一键体检统一编排：CF 视角 / 交叉验证 / 双视角 / 代理头 / WebSocket / 指纹扩展全部并入主流程（旧版只在加载时跑一次，重跑混旧数据），删掉并行的 waitInfo 轮询；每轮先清状态，出口检测失败不再沿用上一轮 IP；指纹扩展列表改为复用节点不再叠加。③ WebRTC 判定重写：按「双栈出口集合 + IPv6 同 /64 视为同一出口」找额外公网地址（旧版双栈必误报、含出口就漏报），额外地址改标「需核实」；补 fc00::/7 内网段；结束回调防重复执行。④ 黑名单如实化：SORBS 已停运移除；Spamhaus ZEN 先用测试地址自检，对公共解析器不可用时明确标注，不再假报「未列入」；删掉「3 个库均已查」的说法。⑤ 请求层：超时改为真取消（AbortController）；测速每步带超时并验状态码、按钮 finally 恢复；站点归属地限并发（5）并加 24 小时本地缓存；批量查询改 4 路并发 + 进度 + 按钮防重复。⑥ 准确性零碎：语言地区改用 Intl.Locale（zh-Hans-CN 不再误扣分）；freeipapi 时区只在单时区国家参与比较、端点换 /api/v1/json/；DNS 判定在无归属数据时显示「无法比较」、国家名别名归一；清单解析修跨行吞行 bug 并校验地址合法性（999.x、时间样式、[v6]:端口）；详情缺字段不再拼 undefined/NaN 地图；导出报告延迟回收链接并补全快照字段；迷你状态条改直读状态（纯 IPv6 也显示）；双视角/指纹扩展/代理头的第三方数据统一转义；_headers 补安全头且缓存只作用于页面本身；连通性/AI 的「所在地」「可达」等文案改为与实现相符的说法
 - **v1.5.1（2026-11-11）**：修 IPv6 画像第二数据源——旧端点 `ipapi.is/json/` 已 502 失效（失败被静默兜底、第二源不一致提示永不触发），换到同口径现行端点 `api.ipapi.is`（实测 200、字段同为扁平 country/city），双源一致不并列、不一致才亮第二源的老行为不变；页面页脚补可见版本号
