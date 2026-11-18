@@ -4,18 +4,14 @@
 为自己折腾优选 IP / 节点而写：综合了 One IP、IPSuper、ping0、IPCheck.ing、TcpTest、Whoer 六家站点的长处，收进一个**纯静态单文件**，零后端、零成本。
 基于 **Cloudflare Pages** 部署（或本地直接打开），全部运行在免费额度内，无需服务器、无需数据库。
 
-![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)
-![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue)
-![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black)
-![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
-![版本](https://img.shields.io/badge/版本-v1.6.1-blue)
-
-> 本仓库只包含代码，不包含任何人的检测数据。下方截图均为**示例数据渲染**（演示 IP 为公共 DNS 地址 1.1.1.1），不是任何人的真实检测结果。
-> 检测历史只存在你自己的浏览器 localStorage（浏览器本地存储）里，不上传、不经过任何服务器。
+![版本](https://img.shields.io/badge/版本-v1.6.1-blue) ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white) ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue) ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black) ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
 
 **直达**：[🌐 打开站点](https://ip.ymaym.top) · [⬇️ 下载最新版](https://github.com/YiMing918/ym-ip/releases/latest) · [📖 博客教程](https://bk.ymaym.top/post/ym-ip-guide)
 
 **目录**：[版本亮点](#-版本亮点) · [效果预览](#-效果预览) · [功能一览](#-功能一览这个站能查什么) · [先选下载文件](#-先选下载文件部署前先分清三个包) · [新手先看这里](#-新手先看这里部署前要准备什么) · [特性](#-特性) · [部署总览](#-部署总览) · [探活](#-探活怎么知道这个站还活着) · [保活](#-保活需不需要定期弄点动静防休眠) · [自动更新](#-自动更新发新版时线上怎么跟上) · [出事了怎么办](#-出事了怎么办) · [总共要花多少钱](#-总共要花多少钱) · [手机能干哪些](#-手机能干哪些哪些必须电脑) · [评分口径](#-评分口径) · [与同类站点对比](#-与同类站点对比) · [Fork 部署与原站的区别](#-fork-部署与原站的区别) · [故障检查与维修](#️-故障检查与维修) · [常见问题](#-常见问题) · [隐私与安全](#-隐私与安全) · [安全提醒](#-安全提醒) · [已知边界与路线图](#-已知边界与路线图) · [术语速查](#-术语速查) · [版本历史](#-版本历史) · [目录结构](#-目录结构)
+
+> 本仓库只包含代码，不包含任何人的检测数据。下方截图均为**示例数据渲染**（演示 IP 为公共 DNS 地址 1.1.1.1），不是任何人的真实检测结果。
+> 检测历史只存在你自己的浏览器 localStorage（浏览器本地存储）里，不上传、不经过任何服务器。
 
 ---
 
