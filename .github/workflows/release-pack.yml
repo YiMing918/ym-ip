@@ -32,6 +32,7 @@ jobs:
         run: |
           TAG="${REL_TAG:-$IN_TAG}"
           if [ -z "$TAG" ]; then echo "::error::没有拿到 Release 标签"; exit 1; fi
+                      if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then echo "::error::标签格式不对：$TAG（应形如 v1.6.3）"; exit 1; fi
           ZIPNAME="ym-ip-deploy-$(TZ=Asia/Shanghai date +%Y%m%d).zip"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "zip=$ZIPNAME" >> "$GITHUB_OUTPUT"
