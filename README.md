@@ -4,7 +4,7 @@
 为自己折腾优选 IP / 节点而写：综合了 One IP、IPSuper、ping0、IPCheck.ing、TcpTest、Whoer 六家站点的长处，收进一个**纯静态单文件**，零后端、零成本。
 基于 **Cloudflare Pages** 部署（或本地直接打开），全部运行在免费额度内，无需服务器、无需数据库。
 
-![版本](https://img.shields.io/badge/版本-v1.6.2-blue) ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white) ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue) ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black) ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
+![版本](https://img.shields.io/badge/版本-v1.6.3-blue) ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white) ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue) ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black) ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
 
 **直达**：[⬇️ 下载最新版](https://github.com/YiMing918/ym-ip/releases/latest) · [📖 博客教程](https://bk.ymaym.top/post/ym-ip-guide)
 
@@ -23,7 +23,7 @@
 - **批量筛节点池**：一次粘贴最多 20 条，归属 / 类型 / 风控 / 纯净度一表出，还能直接吃优选清单格式，筛节点不用一个个查
 - **报告可导出**：本次检测一键导出 JSON，存档、发人复核都方便
 - **多源交叉 + CF 视角**：同一出口两家数据库对照打架一眼可见，还能看到这条线路接入了 Cloudflare 的哪个机房——挑优选 IP 时这是最实在的参考
-- **双视角出口**：国内数据库（百度）与国内服务（搜狐）看到的你，和国外视角是不是同一个出口——分流没分流，一测便知
+- **双视角出口**：多源归属对照（原百度 / 搜狐 JSONP 国内源已于 v1.6.3 因安全原因下线，详见版本历史）
 - **优选清单模式**：`IP:端口#地区 [类型]` 格式的清单整段粘贴，逐条出画像并按纯净度排好优先顺序
 - **顺手工具箱**：带宽测速、域名解析查询、IP 黑名单检测都内置了，不用再开别的站
 - **代码与数据彻底分离**：仓库只有代码，你的数据只活在你自己的浏览器里
@@ -103,7 +103,7 @@
 
 再补两句人话：
 
-- **GitHub Actions**（GitHub 自带的自动任务功能）**本项目不需要**：这个站没有后端、没有什么要定时在服务器上跑的活，所以你不用去碰仓库里的 Actions 设置，看到别人教程里讲工作流自动部署的，那是别的项目的玩法。
+- **GitHub Actions**（GitHub 自带的自动任务功能）：本站没有后端、没有需要定时在服务器上跑的活，日常使用不用去碰 Actions 设置；但仓库里确实有一个 `release-pack` 工作流——它只在发布新版（Release）时自动把部署包刷新到 Release 页，不是自动部署站点，别把它当成部署开关。
 - 两边怎么配合，看你选的方式：**方式 A** 是「代码在 GitHub 改好 → Cloudflare Pages 自动把新版拉过去上线」，一次连好、以后全自动；**方式 B / C** 则跳过 GitHub，直接把文件传到 Cloudflare 上，一样能跑，只是以后每次更新都要手动再传一次。
 
 ---
@@ -292,7 +292,7 @@ Fork（复刻）就是把别人的仓库复制一份到你自己账号下，之�
 2. 名称填 `ym-ip`（随便起，认得出就行），URL 填本站的访问地址——原站填 `https://ip.example.com`；**你自己部署的就填你自己的地址**（你的 `xxx.pages.dev` 或你绑的自定义域名）；
 3. 保存后先点一次「立即检测」，看到返回 **200**、响应几百毫秒内，说明探活已经接上了；之后每 30 分钟自动探，你只管在 ym-dash 总览页看状态。
 
-**探什么才算真活**：本站是纯静态、没有后端，所以标准很简单——**首页能打开（返回 200）就是真活**：页面一开，全部检测功能都在访客浏览器里现跑，不存在「首页能开、功能其实坏了」的情况。
+**探什么才算真活**：首页能打开（返回 200）只能说明静态页面本身还活着。评分、归属、黑名单等功能还要靠 ipwho.is、api.ipapi.is、dns.google 等第三方接口在访客浏览器里现跑——这些接口挂了或被限流时，首页照样能开、但对应功能会显示失败或数据不足。所以探活的 200 是「页面活着」的信号，不等于「全部功能都正常」；真要确认功能，得打开页面实际跑一次体检看结果。
 
 ---
 
@@ -398,7 +398,7 @@ Fork（复刻）就是把别人的仓库复制一份到你自己账号下，之�
 | 51–70 | 稍高风险 | 只作临时 / 备用 |
 | >70 | 极度风险 | 建议直接放弃 |
 
-**数据源**：归属 / ASN / 时区 / 经纬度 — ipwho.is（主）+ ipapi.is（交叉验证，失败自动切 freeipapi）；风险推测 — ipwho.is + ipapi.is 双源组织名（api.ipapi.is 的风险标记为密钥版字段）；DNS 出口 — edns.ip-api.com；IPv4 / IPv6 探测 — ipify；黑名单与域名解析 — dns.google（DoH）+ Barracuda / Spamhaus ZEN 名单域（Spamhaus 对公共解析器不可用时会标注）；Tor 检测 — Tor 官方 DNSEL（经 DoH）；国内库定位 — 百度 opendata；国内服务回显 — 搜狐 cityjson；代理头回显 — httpbin.org；带宽测速 — speed.cloudflare.com；CF 视角 — cloudflare.com/cdn-cgi/trace；地图 — OpenStreetMap。
+**数据源**：归属 / ASN / 时区 / 经纬度 — ipwho.is（主）+ ipapi.is（交叉验证，失败自动切 freeipapi）；风险推测 — ipwho.is + ipapi.is 双源组织名（api.ipapi.is 的风险标记为密钥版字段）；DNS 出口 — edns.ip-api.com；IPv4 / IPv6 探测 — ipify；黑名单与域名解析 — dns.google（DoH）+ Barracuda / Spamhaus ZEN 名单域（Spamhaus 对公共解析器不可用时会标注）；Tor 检测 — Tor 官方 DNSEL（经 DoH）；代理头回显 — httpbin.org；带宽测速 — speed.cloudflare.com；CF 视角 — cloudflare.com/cdn-cgi/trace；地图 — OpenStreetMap。
 
 > 各家的风险分是各自数据库 + 各自模型的结果，**不同站点的分数不能横向直接比较**；同一 IP 在本站与 ping0、IPSuper 之间差个十几分很正常，看分档、看标签，比盯着个位数更有用。
 
@@ -542,6 +542,7 @@ A：不会。历史只写在你当前浏览器的 localStorage（浏览器本地
 ## 📜 版本历史
 
 - **文档升级（2026-11-14）**：README 按新手向全套规格重写——新增直达链接、功能一览、先选下载文件、新手先看这里（含「先分清两个地方」）、部署总览与方式对比、三种部署方式的手把手步骤、探活 / 保活 / 自动更新章节。功能与代码不变，仍为 v1.6.1
+- **v1.6.3（2026-11-19）**：安全修复。①**下线百度 opendata 与搜狐 cityjson 两个 JSONP 数据源**：JSONP 会把外部脚本在本站页面里直接执行、能读到本地缓存与检测历史，风险过高；已删除 `jsonpLoad` 及两个数据源，CSP 同步去掉这两家放行，双视角卡改为只保留多源归属对照并如实说明下线原因（归属信息由 ipwho.is 等其他源覆盖）。②**推测风控只给档位、不给精确分**：本地启发式推测路径以前只有 55 / 18 两档却按 0–100 精确展示，现只显示档位文字；有数据库标记的公式折算路径不变。③请求层：`getJson` 加一次退避重试，连通性 / AI 探测改 6 路小并发池；`hasFlags` 补 `is_threat` / `is_mobile`；异步回填加轮次与 IP 比对防旧结果覆盖新一轮。④小修：上传测速验状态码、Ping 单次失败不丢已测结果、IP / 域名输入格式校验补严（IPv4 验段数）、经纬度 NaN 守卫、CF trace 验状态码、历史加清空按钮、`_headers` 补 HSTS / Permissions-Policy / COOP。⑤文档口径订正：探活「首页 200 就是真活」改为如实说明功能依赖第三方接口；GitHub Actions 说法与目录结构补上实际存在的 `.github/workflows/release-pack.yml`。
 - **v1.6.2（2026-11-18）**：对抗式复读修复三项。①**补上内容安全策略（CSP）**：`_headers` 以前只有两个安全头、没有 CSP，现按本站实际外源逐项放行补齐（口径与 ym-cfip 同款，另放行百度/搜狐两个定位 JSONP、OpenStreetMap 地图框架、WebSocket 检测与各站图标探测，现功能一个不掐）。②**指纹卡转义补齐**：IP 时区与国家码是第三方接口回来的数据，以前没转义就拼进页面，现与全站同口径过 `esc()`。③**任意 IP 查询的地图链接先验数字**：经纬度缺失时以前会拼出带着 undefined 的坏链接，现与详情卡同口径、是数字才给链接。定向测试 13 项（改前全失败、改后全过）。
 - **v1.6.1（2026-11-13）**：修正 v1.6.0 对 api.ipapi.is 免费档返回字段的假设——实测无密钥响应只有组织/ASN 名称、没有 is_* 风险标记（标记是密钥版字段）。改为：有标记时才走公式折算；无标记时用 ipwho + ipapi.is 双源组织名关键词推测并如实标注，不再人人都是「纯净度 95」
 - **v1.6.0（2026-11-13）**：三方代码审查后的集中修复。① 风控数据源换血：proxycheck.io 不返回跨域头、浏览器里永远读不到（分数实际一直是本地推测），弃用；风险改查 api.ipapi.is 并统一类型判定为中文口径（英文机房类型不再被算成住宅低分）；归属与风险全无时显示「无法评分」，不再默认「住宅、纯净度 82」。② 一键体检统一编排：CF 视角 / 交叉验证 / 双视角 / 代理头 / WebSocket / 指纹扩展全部并入主流程（旧版只在加载时跑一次，重跑混旧数据），删掉并行的 waitInfo 轮询；每轮先清状态，出口检测失败不再沿用上一轮 IP；指纹扩展列表改为复用节点不再叠加。③ WebRTC 判定重写：按「双栈出口集合 + IPv6 同 /64 视为同一出口」找额外公网地址（旧版双栈必误报、含出口就漏报），额外地址改标「需核实」；补 fc00::/7 内网段；结束回调防重复执行。④ 黑名单如实化：SORBS 已停运移除；Spamhaus ZEN 先用测试地址自检，对公共解析器不可用时明确标注，不再假报「未列入」；删掉「3 个库均已查」的说法。⑤ 请求层：超时改为真取消（AbortController）；测速每步带超时并验状态码、按钮 finally 恢复；站点归属地限并发（5）并加 24 小时本地缓存；批量查询改 4 路并发 + 进度 + 按钮防重复。⑥ 准确性零碎：语言地区改用 Intl.Locale（zh-Hans-CN 不再误扣分）；freeipapi 时区只在单时区国家参与比较、端点换 /api/v1/json/；DNS 判定在无归属数据时显示「无法比较」、国家名别名归一；清单解析修跨行吞行 bug 并校验地址合法性（999.x、时间样式、[v6]:端口）；详情缺字段不再拼 undefined/NaN 地图；导出报告延迟回收链接并补全快照字段；迷你状态条改直读状态（纯 IPv6 也显示）；双视角/指纹扩展/代理头的第三方数据统一转义；_headers 补安全头且缓存只作用于页面本身；连通性/AI 的「所在地」「可达」等文案改为与实现相符的说法
@@ -568,7 +569,10 @@ A：不会。历史只写在你当前浏览器的 localStorage（浏览器本地
 ```
 ym-ip/
 ├── index.html          # 全部功能就这一个文件（样式、脚本全内联）
-├── _headers            # Cloudflare Pages 响应头（防缓存旧版页面）
+├── _headers            # Cloudflare Pages 响应头（安全头 + 防缓存旧版页面）
+├── .github/
+│   └── workflows/
+│       └── release-pack.yml  # 发布 Release 时自动刷新部署包（不参与站点部署）
 ├── docs/
 │   ├── preview-v4.png        # 效果预览 · 桌面端（示例数据渲染）
 │   ├── preview-mobile-v4.png # 效果预览 · 移动端
