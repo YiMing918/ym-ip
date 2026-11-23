@@ -637,7 +637,9 @@ function exportReport(){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'ip-report-' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+  document.body.appendChild(a); // 必须先挂到页面上再点：分离的 a.click() 在部分浏览器上不会触发下载
   a.click();
+  a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000); // 立即回收会让个别浏览器下载失败
 }
 
