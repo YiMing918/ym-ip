@@ -4,7 +4,7 @@
 为自己折腾优选 IP / 节点而写：综合了 One IP、IPSuper、ping0、IPCheck.ing、TcpTest、Whoer 六家站点的长处，收进一个**纯静态单文件**，零后端、零成本。
 基于 **Cloudflare Pages** 部署（或本地直接打开），全部运行在免费额度内，无需服务器、无需数据库。
 
-![版本](https://img.shields.io/badge/版本-v1.6.3-blue) ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white) ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue) ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black) ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
+![版本](https://img.shields.io/badge/版本-v1.6.4-blue) ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white) ![数据源](https://img.shields.io/badge/数据源-公开免费接口-blue) ![JavaScript](https://img.shields.io/badge/JavaScript-单文件前端-F7DF1E?logo=javascript&logoColor=black) ![Free](https://img.shields.io/badge/费用-免费额度-3fb950)
 
 **直达**：[⬇️ 下载最新版](https://github.com/YiMing918/ym-ip/releases/latest) · [📖 博客教程](https://bk.ymaym.top/post/ym-ip-guide)
 
@@ -542,6 +542,7 @@ A：不会。历史只写在你当前浏览器的 localStorage（浏览器本地
 ## 📜 版本历史
 
 - **文档升级（2026-11-14）**：README 按新手向全套规格重写——新增直达链接、功能一览、先选下载文件、新手先看这里（含「先分清两个地方」）、部署总览与方式对比、三种部署方式的手把手步骤、探活 / 保活 / 自动更新章节。功能与代码不变，仍为 v1.6.1
+- **v1.6.4（2026-11-23）**：全量审计修复两项。①**IPv6 格式校验补严**：旧版无 `::` 时只数段数不验内容，`zz:zz:zz:zz:zz:zz`、9 段、单段超 4 位这类假地址全被当成合法 IPv6 放行去查；带 `::` 时又把 `::ffff:1.2.3.4` 这类 IPv4 映射地址误杀。现逐段验 1–4 位十六进制、IPv4 尾段先验合法再折算（定向测试 15 项全过）。②**任意 IP 查询防旧结果覆盖**：查询主结果回填原先没查轮次，慢的旧查询回来会盖掉新一轮结果，现与黑名单回填同口径、过期轮次直接丢弃。
 - **v1.6.3（2026-11-19）**：安全修复。①**下线百度 opendata 与搜狐 cityjson 两个 JSONP 数据源**：JSONP 会把外部脚本在本站页面里直接执行、能读到本地缓存与检测历史，风险过高；已删除 `jsonpLoad` 及两个数据源，CSP 同步去掉这两家放行，双视角卡改为只保留多源归属对照并如实说明下线原因（归属信息由 ipwho.is 等其他源覆盖）。②**推测风控只给档位、不给精确分**：本地启发式推测路径以前只有 55 / 18 两档却按 0–100 精确展示，现只显示档位文字；有数据库标记的公式折算路径不变。③请求层：`getJson` 加一次退避重试，连通性 / AI 探测改 6 路小并发池；`hasFlags` 补 `is_threat` / `is_mobile`；异步回填加轮次与 IP 比对防旧结果覆盖新一轮。④小修：上传测速验状态码、Ping 单次失败不丢已测结果、IP / 域名输入格式校验补严（IPv4 验段数）、经纬度 NaN 守卫、CF trace 验状态码、历史加清空按钮、`_headers` 补 HSTS / Permissions-Policy / COOP。⑤文档口径订正：探活「首页 200 就是真活」改为如实说明功能依赖第三方接口；GitHub Actions 说法与目录结构补上实际存在的 `.github/workflows/release-pack.yml`。
 - **v1.6.2（2026-11-18）**：对抗式复读修复三项。①**补上内容安全策略（CSP）**：`_headers` 以前只有两个安全头、没有 CSP，现按本站实际外源逐项放行补齐（口径与 ym-cfip 同款，另放行百度/搜狐两个定位 JSONP、OpenStreetMap 地图框架、WebSocket 检测与各站图标探测，现功能一个不掐）。②**指纹卡转义补齐**：IP 时区与国家码是第三方接口回来的数据，以前没转义就拼进页面，现与全站同口径过 `esc()`。③**任意 IP 查询的地图链接先验数字**：经纬度缺失时以前会拼出带着 undefined 的坏链接，现与详情卡同口径、是数字才给链接。定向测试 13 项（改前全失败、改后全过）。
 - **v1.6.1（2026-11-13）**：修正 v1.6.0 对 api.ipapi.is 免费档返回字段的假设——实测无密钥响应只有组织/ASN 名称、没有 is_* 风险标记（标记是密钥版字段）。改为：有标记时才走公式折算；无标记时用 ipwho + ipapi.is 双源组织名关键词推测并如实标注，不再人人都是「纯净度 95」

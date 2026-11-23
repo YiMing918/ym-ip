@@ -263,7 +263,7 @@ ul.check{padding-left:20px;margin:6px 0}
   <a href="https://ping0.cc" target="_blank" rel="noopener">ping0.cc</a>、
   <a href="https://ipsuper.com" target="_blank" rel="noopener">ipsuper.com</a>、
   <a href="https://scamalytics.com/ip" target="_blank" rel="noopener">Scamalytics</a> 交叉复核。<br>
-  我的 IP 监测站 v1.6.3 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
+  我的 IP 监测站 v1.6.4 · 纯静态页面，可部署在 Cloudflare Pages 并绑定自己的域名。
 </footer>
 </div>
 
@@ -521,6 +521,7 @@ async function queryIp(){
   let info=null, risk=null;
   try{ info = await getJson('https://ipwho.is/'+encodeURIComponent(ip), 9000); }catch(e){}
   risk = await fetchRisk(ip);
+  if(mySeq !== _qSeq) return; // v1.6.4：慢的旧查询回来时不再覆盖新一轮结果（原先只有黑名单回填查了轮次）
   if(!info || info.success===false){ $('qResult').innerHTML = '<span class="fail">查不到这个 IP，检查一下格式。</span>'; return; }
   const c = info.connection||{};
   let rv = hasFlags(risk) ? riskFromFlags(risk) : null;
@@ -546,8 +547,26 @@ function validV4(ip){ const parts = ip.split('.'); return parts.length === 4 && 
 function validV6(ip){
   if(!ip.includes(':')) return false;
   if(/^\d{1,2}:\d{2}:\d{2}$/.test(ip)) return false; // 12:30:45 这种时间样式不是 IPv6
-  if(ip.includes('::')) return /^[0-9a-fA-F:]+$/.test(ip);
-  return ip.split(':').length >= 6; // 无 :: 的完整写法至少 6 段（宽松口径）
+  // v1.6.4 修复：旧版无 :: 时只数段数不验内容，zz:zz:zz:zz:zz:zz、9 段、
+  // 12345:… 这类假地址全被放行；带 :: 时又不验段数与每段长度，且把
+  // ::ffff:1.2.3.4 这种 IPv4 映射地址误杀。现逐段验 1–4 位十六进制，
+  // IPv4 尾段先验合法再按 2 段折算。
+  let s = ip;
+  if(s.includes('.')){
+    const idx = s.lastIndexOf(':');
+    if(idx < 0 || !validV4(s.slice(idx + 1))) return false;
+    s = s.slice(0, idx) + ':0:0';
+  }
+  const grp = g => /^[0-9a-fA-F]{1,4}$/.test(g);
+  const halves = s.split('::');
+  if(halves.length > 2) return false;
+  if(halves.length === 2){
+    const L = halves[0] ? halves[0].split(':') : [];
+    const R = halves[1] ? halves[1].split(':') : [];
+    return L.every(grp) && R.every(grp) && (L.length + R.length) < 8;
+  }
+  const parts = s.split(':');
+  return parts.length === 8 && parts.every(grp);
 }
 function parseList(text){
   const out = []; const seen = new Set();
