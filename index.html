@@ -827,9 +827,10 @@ function runFP(){
   const nav = navigator;
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
   const lang = nav.language || '';
-  const items = []; let score = 100;
+  const items = []; let score = 100; let judged = 0; // judged：真正比对过的 IP 相关项数，全为 0 时不给分（没证据不能显示满分，与综合评分同口径）
   const ipTz = state.info && state.info.timezone ? (state.info.timezone.id||'') : '';
   if(ipTz){
+    judged++;
     if(ipTz === tz) items.push(['✓ 浏览器时区与 IP 时区一致（'+esc(tz)+'）', 0]);
     else { items.push(['✗ 时区不一致：浏览器 '+esc(tz)+' vs IP '+esc(ipTz)+'（扣 25）', -25]); score -= 25; }
   }
@@ -843,18 +844,21 @@ function runFP(){
     langRegion = seg.length ? seg[seg.length - 1].toUpperCase() : '';
   }
   if(ipCc && langRegion){
+    judged++;
     if(ipCc === langRegion) items.push(['✓ 浏览器语言地区与 IP 归属一致（'+esc(lang)+'）', 0]);
     else { items.push(['△ 语言地区 '+esc(langRegion)+' 与 IP 归属 '+esc(ipCc)+' 不同（扣 10，人在国外用母语也常见）', -10]); score -= 10; }
   }
   if(rtcExtras().length){ items.push(['✗ WebRTC 暴露了出口之外的公网 IP（扣 30）', -30]); score -= 30; }
   else items.push(['✓ WebRTC 未暴露出口之外的公网 IP', 0]);
   if(state.dns && state.info){
+    judged++;
     const dc = normCountry((state.dns.geo||'').split(' - ')[0]);
     const ic = normCountry(state.info.country || '');
     if(dc && ic && dc !== ic){ items.push(['✗ DNS 出口国家与 IP 归属不一致（扣 20）', -20]); score -= 20; }
     else items.push(['✓ DNS 出口与 IP 归属一致', 0]);
   }
-  $('fpScore').textContent = Math.max(0, score);
+  if(!judged) items.unshift(['△ IP 归属数据缺失，时区/语言/DNS 一致性无法核对，本项不评分（WebRTC 单项结论仍有效）', 0]);
+  $('fpScore').textContent = judged ? Math.max(0, score) : '–';
   $('fpList').innerHTML = items.map(i=>'<li>'+i[0]+'</li>').join('') || '<li class="muted">数据不足</li>';
   let gl = '';
   try{
